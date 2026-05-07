@@ -240,7 +240,7 @@ Pour activer les notifications :
 
 ## 📄 Licence
 
-Usage personnel libre. Projet privé, non destiné à la distribution commerciale.
+Usage personnel libre. Projet privé, non destiné à la distribution commerciale. 
 
 -----
 
