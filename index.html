@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="BibiLeaf">
+  <meta name="theme-color" content="#5a9a6f">
+  <meta name="description" content="Suivi doux de vos plantes d'intérieur">
+
+  <title>BibiLeaf 🪴</title>
+
+  <!-- PWA manifest -->
+  <link rel="manifest" href="/manifest.json">
+
+  <!-- Apple touch icon -->
+  <link rel="apple-touch-icon" href="/icons/icon-512.png">
+  <link rel="icon" href="/icons/icon-192.png" type="image/png">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="/styles.css">
+
+  <!-- XLSX library (CDN, mis en cache par SW) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+  <!-- Écran de chargement -->
+  <div id="loading" class="loading-screen">
+    <div class="loading-logo">🪴</div>
+    <div style="font-weight:900;color:var(--green-deep);font-size:1.4rem">BibiLeaf</div>
+  </div>
+
+  <!-- App principale -->
+  <div id="app" style="display:none">
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="app-logo">
+        <img src="/icons/icon-192.png" alt="BibiLeaf">
+        <span class="app-logo-name">BibiLeaf</span>
+      </div>
+      <div class="header-modes">
+        <button class="mode-pill mode-pill--winter mode-pill--inactive" id="mode-winter" title="Mode hiver">
+          ❄️ Hiver
+        </button>
+        <button class="mode-pill mode-pill--vacation mode-pill--inactive" id="mode-vacation" title="Mode vacances">
+          🌴 Vacances
+        </button>
+      </div>
+    </header>
+
+    <!-- Contenu principal -->
+    <main class="main-content" id="main-content">
+      <!-- Rendu dynamique par app.js -->
+    </main>
+
+    <!-- Bouton ajout flottant -->
+    <button class="fab" id="fab-add" aria-label="Ajouter une plante">+</button>
+
+    <!-- Navigation bas de page -->
+    <nav class="bottom-nav">
+      <button class="nav-btn nav-btn--active" data-screen="home">
+        <span class="nav-icon">🪴</span>
+        <span>Plantes</span>
+      </button>
+      <button class="nav-btn" data-screen="calendar">
+        <span class="nav-icon">📅</span>
+        <span>Calendrier</span>
+      </button>
+      <button class="nav-btn" data-screen="settings">
+        <span class="nav-icon">⚙️</span>
+        <span>Réglages</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- App module -->
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
