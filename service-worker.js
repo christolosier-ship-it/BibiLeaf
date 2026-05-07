@@ -1,19 +1,21 @@
 // BibiLeaf Service Worker
 const CACHE_NAME = 'bibileaf-v1';
+const BASE = '/BibiLeaf';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/styles.css',
-  '/app.js',
-  '/src/storage/idb.js',
-  '/src/models/plant.js',
-  '/src/utils/date.js',
-  '/src/utils/calc.js',
-  '/src/ui/components/card.js',
-  '/src/ui/components/form.js',
-  '/src/ui/components/modal.js',
-  '/src/ui/components/calendar.js',
-  '/src/import-export/xlsx.js',
+  `${BASE}/`,
+  `${BASE}/index.html`,
+  `${BASE}/styles.css`,
+  `${BASE}/app.js`,
+  `${BASE}/src/storage/idb.js`,
+  `${BASE}/src/models/plant.js`,
+  `${BASE}/src/utils/date.js`,
+  `${BASE}/src/utils/calc.js`,
+  `${BASE}/src/ui/components/card.js`,
+  `${BASE}/src/ui/components/form.js`,
+  `${BASE}/src/ui/components/modal.js`,
+  `${BASE}/src/ui/components/sheet.js`,
+  `${BASE}/src/ui/components/calendar.js`,
+  `${BASE}/src/import-export/xlsx.js`,
   'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'
 ];
 
@@ -43,5 +45,5 @@ self.addEventListener('fetch', e => {
 // Notifications locales
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  e.waitUntil(clients.openWindow('/'));
+  e.waitUntil(clients.openWindow(`${BASE}/`));
 });

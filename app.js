@@ -38,7 +38,7 @@ async function init() {
 
   // Enregistrer le service worker
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/service-worker.js').catch(() => {});
+    navigator.serviceWorker.register('/BibiLeaf/service-worker.js').catch(() => {});
   }
 
   renderAll();
@@ -330,7 +330,7 @@ function scheduleNotifications() {
   if (late.length > 0) {
     new Notification('BibiLeaf 🪴', {
       body: `${late.length} plante(s) en attente d'arrosage !`,
-      icon: '/icons/icon-192.png',
+      icon: '/BibiLeaf/icons/icon-192.png',
     });
   }
 }
@@ -338,7 +338,7 @@ function scheduleNotifications() {
 function testNotification() {
   new Notification('BibiLeaf 🪴', {
     body: 'Les notifications fonctionnent ! 🌿',
-    icon: '/icons/icon-192.png',
+    icon: '/BibiLeaf/icons/icon-192.png',
   });
   toastMsg('Notification envoyée !');
 }
