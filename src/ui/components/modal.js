@@ -29,14 +29,14 @@ export function closeModal(overlay) {
   overlay.addEventListener('transitionend', () => overlay.remove(), { once: true });
 }
 
-export function confirmModal(message) {
+export function confirmModal(message, okLabel = 'Supprimer') {
   return new Promise(resolve => {
     const overlay = createModal(`
       <div class="modal-confirm">
         <p>${message}</p>
         <div class="modal-btns">
           <button class="btn btn-secondary" id="modal-cancel">Annuler</button>
-          <button class="btn btn-danger" id="modal-ok">Supprimer</button>
+          <button class="btn btn-danger" id="modal-ok">${okLabel}</button>
         </div>
       </div>
     `);

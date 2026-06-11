@@ -2,6 +2,7 @@
 
 import { createModal, closeModal } from './modal.js';
 import { todayISO } from '../../utils/date.js';
+import { esc } from '../../utils/html.js';
 
 export function openPlantForm(plant, onSave) {
   const isEdit = !!plant.nom;
@@ -35,13 +36,13 @@ export function openPlantForm(plant, onSave) {
 
       <div class="form-section-title">💧 Arrosage</div>
       <label>Fréquence (jours)
-        <input type="number" id="f-freqEau" value="${plant.freqEau || 7}" min="1" max="365">
+        <input type="number" id="f-freqEau" value="${esc(plant.freqEau || 7)}" min="1" max="365">
       </label>
       <label>Volume d'eau
         <input type="text" id="f-volumeEau" value="${esc(plant.volumeEau)}" placeholder="200ml">
       </label>
       <label>Dernier arrosage
-        <input type="date" id="f-derniereEau" value="${plant.derniereEau || today}">
+        <input type="date" id="f-derniereEau" value="${esc(plant.derniereEau || today)}">
       </label>
 
       <div class="form-section-title">🌿 Engrais</div>
@@ -52,13 +53,13 @@ export function openPlantForm(plant, onSave) {
       </label>
       <div id="engrais-fields" style="${plant.engraisActif ? '' : 'display:none'}">
         <label>Fréquence engrais (jours)
-          <input type="number" id="f-freqEngrais" value="${plant.freqEngrais || 30}" min="1">
+          <input type="number" id="f-freqEngrais" value="${esc(plant.freqEngrais || 30)}" min="1">
         </label>
         <label>Quantité engrais
           <input type="text" id="f-quantiteEngrais" value="${esc(plant.quantiteEngrais)}" placeholder="5ml">
         </label>
         <label>Dernier engrais
-          <input type="date" id="f-dernierEngrais" value="${plant.dernierEngrais || today}">
+          <input type="date" id="f-dernierEngrais" value="${esc(plant.dernierEngrais || today)}">
         </label>
       </div>
 
@@ -138,9 +139,4 @@ export function openPlantForm(plant, onSave) {
     closeModal(overlay);
     onSave(updated);
   });
-}
-
-function esc(str) {
-  if (!str) return '';
-  return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 }

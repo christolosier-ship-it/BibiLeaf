@@ -1,6 +1,7 @@
 // src/import-export/xlsx.js — Import / Export Excel
 
 import { createPlant } from '../models/plant.js';
+import { parseDate, toISO } from '../utils/date.js';
 
 const COLS = [
   'id', 'nom', 'espece', 'piece', 'photoURL',
@@ -75,11 +76,11 @@ export function importXLSX(file) {
             // r[4] = photo URL ignorée
             freqEau: Number(r[5]) || 7,
             volumeEau: r[6] || '',
-            derniereEau: r[7] || null,
+            derniereEau: normalizeImportedDate(r[7], XLSX),
             engraisActif: String(r[8]).toLowerCase() === 'oui',
             freqEngrais: Number(r[9]) || 30,
             quantiteEngrais: r[10] || '',
-            dernierEngrais: r[11] || null,
+            dernierEngrais: normalizeImportedDate(r[11], XLSX),
             notes: r[12] || '',
           });
         });
@@ -91,6 +92,28 @@ export function importXLSX(file) {
     reader.onerror = () => reject(new Error('Lecture impossible'));
     reader.readAsBinaryString(file);
   });
+}
+
+function normalizeImportedDate(value, XLSX) {
+  if (!value) return null;
+
+  if (value instanceof Date) {
+    return toISO(value);
+  }
+
+  if (typeof value === 'number' && XLSX?.SSF?.parse_date_code) {
+    const parsed = XLSX.SSF.parse_date_code(value);
+    if (!parsed) return null;
+    return toISO(new Date(parsed.y, parsed.m - 1, parsed.d));
+  }
+
+  const text = String(value).trim();
+  const isoMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    return parseDate(text) ? text : null;
+  }
+
+  return null;
 }
 
 /** Génère un template vide XLSX */

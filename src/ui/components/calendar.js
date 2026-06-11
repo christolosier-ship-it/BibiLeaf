@@ -1,7 +1,8 @@
 // src/ui/components/calendar.js — Vue calendrier légère
 
 import { nextWaterDate } from '../../utils/calc.js';
-import { parseDate, toISO, addDays } from '../../utils/date.js';
+import { toISO, addDays } from '../../utils/date.js';
+import { esc } from '../../utils/html.js';
 
 export function renderCalendar(plants, winterMode, container) {
   const today = new Date();
@@ -35,8 +36,8 @@ export function renderCalendar(plants, winterMode, container) {
           <div class="cal-events">
             ${dayPlants.map(p => `
               <div class="cal-event ${isPast ? 'cal-event--late' : ''}">
-                ${p.photo ? `<img src="${p.photo}" class="cal-event-photo">` : '💧'}
-                <span>${p.nom}</span>
+                ${p.photo ? `<img src="${esc(p.photo)}" class="cal-event-photo" alt="">` : '💧'}
+                <span>${esc(p.nom)}</span>
               </div>
             `).join('')}
             ${dayPlants.length === 0 ? `<div class="cal-empty">—</div>` : ''}

@@ -2,6 +2,7 @@
 
 import { urgency, nextWaterDate, nextFertDate } from '../../utils/calc.js';
 import { formatDate } from '../../utils/date.js';
+import { esc } from '../../utils/html.js';
 
 const URGENCY_CONFIG = {
   red:    { emoji: '🚨', label: 'En retard !',    cls: 'urgent-red' },
@@ -21,7 +22,7 @@ export function renderCard(plant, winterMode, vacationMode, handlers) {
   card.dataset.id = plant.id;
 
   const photo = plant.photo
-    ? `<img src="${plant.photo}" alt="${plant.nom}" class="card-photo">`
+    ? `<img src="${esc(plant.photo)}" alt="${esc(plant.nom)}" class="card-photo">`
     : `<div class="card-photo card-photo--empty">🪴</div>`;
 
   card.innerHTML = `
@@ -30,19 +31,19 @@ export function renderCard(plant, winterMode, vacationMode, handlers) {
     </div>
     <div class="card-body">
       <div class="card-header">
-        <span class="card-name">${plant.nom || 'Sans nom'}</span>
+        <span class="card-name">${esc(plant.nom || 'Sans nom')}</span>
         <span class="urgency-badge ${cfg.cls}">${cfg.emoji}</span>
       </div>
-      ${plant.espece ? `<div class="card-species">${plant.espece}</div>` : ''}
-      ${plant.piece ? `<div class="card-room">📍 ${plant.piece}</div>` : ''}
+      ${plant.espece ? `<div class="card-species">${esc(plant.espece)}</div>` : ''}
+      ${plant.piece ? `<div class="card-room">📍 ${esc(plant.piece)}</div>` : ''}
       <div class="card-next">
         <span class="card-water">💧 ${formatDate(nextWater)}</span>
         ${plant.engraisActif ? `<span class="card-fert">🌿 ${formatDate(nextFert)}</span>` : ''}
       </div>
     </div>
     <div class="card-actions">
-      <button class="btn-water btn-action" title="Arroser" data-id="${plant.id}">💧</button>
-      ${plant.engraisActif ? `<button class="btn-fert btn-action" title="Engrais" data-id="${plant.id}">🌿</button>` : ''}
+      <button class="btn-water btn-action" title="Arroser" data-id="${esc(plant.id)}">💧</button>
+      ${plant.engraisActif ? `<button class="btn-fert btn-action" title="Engrais" data-id="${esc(plant.id)}">🌿</button>` : ''}
     </div>
   `;
 

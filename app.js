@@ -38,17 +38,12 @@ async function init() {
 
   // Enregistrer le service worker
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/BibiLeaf/service-worker.js').catch(() => {});
+    navigator.serviceWorker.register('./service-worker.js').catch(() => {});
   }
 
   renderAll();
 
-  // Demander permissions notifications au premier démarrage
-  if (Notification.permission === 'default') {
-    setTimeout(() => Notification.requestPermission(), 3000);
-  }
-
-  // Programmer les notifications
+  // Programmer les notifications seulement si l’utilisateur les a déjà autorisées.
   scheduleNotifications();
 }
 
@@ -209,11 +204,12 @@ function renderSettings(container) {
     <div class="settings-section">
       <div class="settings-title">App</div>
       <button class="btn-settings-action" id="btn-notif">🔔 Tester les notifications</button>
+      <button class="btn-settings-action" id="btn-reload-latest">🔄 Recharger la dernière version</button>
       <button class="btn-settings-action danger" id="btn-reset">🗑️ Supprimer toutes les plantes</button>
     </div>
 
     <div style="text-align:center;padding:20px;color:var(--text-light);font-size:0.75rem">
-      BibiLeaf v1.0 · Données stockées localement 🌿
+      BibiLeaf v1.0.1 · Les données restent stockées localement sur cet appareil 🌿
     </div>
   `;
 
@@ -257,6 +253,11 @@ function renderSettings(container) {
   container.querySelector('#btn-template').addEventListener('click', () => downloadTemplate());
 
   container.querySelector('#btn-notif').addEventListener('click', () => {
+    if (!('Notification' in window)) {
+      toastMsg('Notifications non disponibles sur cet appareil ou ce navigateur.', 'error');
+      return;
+    }
+
     if (Notification.permission !== 'granted') {
       Notification.requestPermission().then(p => {
         if (p === 'granted') testNotification();
@@ -265,6 +266,12 @@ function renderSettings(container) {
     } else {
       testNotification();
     }
+  });
+
+  container.querySelector('#btn-reload-latest').addEventListener('click', async () => {
+    const ok = await confirmModal('Recharger la dernière version ?<br>Tes plantes et réglages seront conservés.', 'Recharger');
+    if (!ok) return;
+    await reloadLatestVersion();
   });
 
   container.querySelector('#btn-reset').addEventListener('click', async () => {
@@ -285,7 +292,7 @@ async function markWater(id) {
   const updated = { ...plant, derniereEau: todayISO() };
   await db.put(updated);
   state.plants = await db.getAll();
-  toastMsg(`💧 ${plant.nom} arrosée !`);
+  toastMsg(`💧 ${plant.nom || 'Plante'} arrosée !`);
   renderAll();
 }
 
@@ -294,7 +301,7 @@ async function markFert(id) {
   const updated = { ...plant, dernierEngrais: todayISO() };
   await db.put(updated);
   state.plants = await db.getAll();
-  toastMsg(`🌿 Engrais noté pour ${plant.nom} !`);
+  toastMsg(`🌿 Engrais noté pour ${plant.nom || 'Plante'} !`);
   renderAll();
 }
 
@@ -311,7 +318,7 @@ async function deletePlant(id) {
   const plant = getPlant(id);
   await db.delete(id);
   state.plants = await db.getAll();
-  toastMsg(`🗑️ ${plant.nom} supprimée`);
+  toastMsg(`🗑️ ${plant.nom || 'Plante'} supprimée`);
   renderAll();
 }
 
@@ -319,26 +326,44 @@ function getPlant(id) {
   return state.plants.find(p => p.id === id);
 }
 
+async function reloadLatestVersion() {
+  if ('caches' in window) {
+    const keys = await caches.keys();
+    await Promise.all(
+      keys
+        .filter(key => key.startsWith('bibileaf-'))
+        .map(key => caches.delete(key))
+    );
+  }
+  toastMsg('Rechargement de la dernière version…');
+  setTimeout(() => window.location.reload(), 400);
+}
+
 // ============================================================
 // Notifications locales
 // ============================================================
 function scheduleNotifications() {
-  if (Notification.permission !== 'granted' || state.vacationMode) return;
+  if (!('Notification' in window) || Notification.permission !== 'granted' || state.vacationMode) return;
   // Pas de vrai scheduling possible en Safari sans push server
   // On programme une notification immédiate pour les retards
   const late = state.plants.filter(p => urgency(p, state.winterMode, false) === 'red');
   if (late.length > 0) {
     new Notification('BibiLeaf 🪴', {
       body: `${late.length} plante(s) en attente d'arrosage !`,
-      icon: '/BibiLeaf/icons/icon-192.png',
+      icon: './icons/icon-192.png',
     });
   }
 }
 
 function testNotification() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') {
+    toastMsg('Notifications non disponibles sur cet appareil ou ce navigateur.', 'error');
+    return;
+  }
+
   new Notification('BibiLeaf 🪴', {
     body: 'Les notifications fonctionnent ! 🌿',
-    icon: '/BibiLeaf/icons/icon-192.png',
+    icon: './icons/icon-192.png',
   });
   toastMsg('Notification envoyée !');
 }

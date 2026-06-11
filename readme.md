@@ -1,5 +1,7 @@
 # 🪴 BibiLeaf
 
+**Version : v1.0.1**
+
 > Suivi doux et minimaliste de vos plantes d’intérieur.  
 > PWA mobile · Offline-first · Zéro backend · Zéro compte
 
@@ -74,7 +76,8 @@ bibileaf/
     ├── models/
     │   └── plant.js              ← Modèle de données plante
     ├── utils/
-    │   ├── date.js               ← Utilitaires dates (format FR, diff, ISO)
+    │   ├── date.js               ← Utilitaires dates locales (format FR, diff, ISO)
+    │   ├── html.js               ← Échappement HTML des données utilisateur
     │   └── calc.js               ← Calculs urgence, tri, modes hiver/vacances
     ├── import-export/
     │   └── xlsx.js               ← Import / Export / Template Excel
@@ -201,14 +204,16 @@ BibiLeaf est un site statique. Aucun serveur, aucune base de données distante.
 
 ## 🔔 Notifications
 
-Les notifications sont locales (sans serveur push). Elles sont déclenchées au chargement de l’application si des plantes sont en retard.
+Les notifications sont locales (sans serveur push) et limitées par le navigateur/PWA. Elles peuvent être déclenchées au chargement de l’application si des plantes sont en retard et si l’utilisateur les a déjà autorisées.
 
 > **Note Safari / iOS :** les notifications push en arrière-plan ne sont pas supportées avant iOS 16.4. L’application affiche les alertes à chaque ouverture.
 
 Pour activer les notifications :
 
-1. Aller dans **Réglages → App → Notifications**
-1. Ou appuyer sur **🔔 Tester les notifications** dans l’écran Réglages de l’app
+1. Aller dans **Réglages → App**
+1. Appuyer sur **🔔 Tester les notifications** dans l’écran Réglages de l’app
+
+La permission n’est jamais demandée automatiquement : elle est déclenchée uniquement par cette action utilisateur.
 
 -----
 
@@ -235,6 +240,8 @@ Pour activer les notifications :
 - ✅ Une seule photo par plante
 - ✅ Pas d’historique complet des actions
 - ✅ Export / Import via un unique template Excel
+- ✅ Données utilisateur stockées localement sur l’appareil
+- ✅ Cache applicatif versionné (`bibileaf-v1.0.1`)
 
 -----
 

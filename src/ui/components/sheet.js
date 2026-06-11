@@ -1,9 +1,10 @@
 // src/ui/components/sheet.js — Fiche détail plante
 
-import { createModal, closeModal, confirmModal, toastMsg } from './modal.js';
+import { createModal, closeModal, confirmModal } from './modal.js';
 import { openPlantForm } from './form.js';
 import { nextWaterDate, nextFertDate, urgency } from '../../utils/calc.js';
-import { formatDate, todayISO } from '../../utils/date.js';
+import { formatDate } from '../../utils/date.js';
+import { esc } from '../../utils/html.js';
 
 export function openPlantSheet(plant, winterMode, vacationMode, handlers) {
   const u = urgency(plant, winterMode, vacationMode);
@@ -15,7 +16,7 @@ export function openPlantSheet(plant, winterMode, vacationMode, handlers) {
   const overlay = createModal(`
     <div class="sheet-header" style="border-bottom: 3px solid ${urgencyColor[u]}">
       <button class="btn-back" id="sheet-close">←</button>
-      <h2>${plant.nom || 'Plante'}</h2>
+      <h2>${esc(plant.nom || 'Plante')}</h2>
       <div class="sheet-header-actions">
         <button class="btn-icon" id="sheet-edit" title="Modifier">✏️</button>
         <button class="btn-icon" id="sheet-duplicate" title="Dupliquer">📋</button>
@@ -25,11 +26,11 @@ export function openPlantSheet(plant, winterMode, vacationMode, handlers) {
 
     <div class="sheet-body">
       ${plant.photo
-        ? `<img src="${plant.photo}" class="sheet-photo" alt="${plant.nom}">`
+        ? `<img src="${esc(plant.photo)}" class="sheet-photo" alt="${esc(plant.nom)}">`
         : ''}
 
-      ${plant.espece ? `<div class="sheet-meta">🌿 ${plant.espece}</div>` : ''}
-      ${plant.piece ? `<div class="sheet-meta">📍 ${plant.piece}</div>` : ''}
+      ${plant.espece ? `<div class="sheet-meta">🌿 ${esc(plant.espece)}</div>` : ''}
+      ${plant.piece ? `<div class="sheet-meta">📍 ${esc(plant.piece)}</div>` : ''}
 
       <div class="sheet-cards">
         <div class="sheet-card">
@@ -37,7 +38,7 @@ export function openPlantSheet(plant, winterMode, vacationMode, handlers) {
           <div class="sheet-card-info">
             <div class="sheet-card-label">Prochain arrosage</div>
             <div class="sheet-card-value">${formatDate(nextWater)}</div>
-            <div class="sheet-card-sub">Toutes les ${plant.freqEau} j${winterMode ? ' (❄️ hiver)' : ''}${plant.volumeEau ? ' · ' + plant.volumeEau : ''}</div>
+            <div class="sheet-card-sub">Toutes les ${esc(plant.freqEau)} j${winterMode ? ' (❄️ hiver)' : ''}${plant.volumeEau ? ' · ' + esc(plant.volumeEau) : ''}</div>
             <div class="sheet-card-sub">Dernier : ${formatDate(plant.derniereEau)}</div>
           </div>
           <button class="btn btn-primary sheet-action-btn" id="sheet-water">Arroser</button>
@@ -49,7 +50,7 @@ export function openPlantSheet(plant, winterMode, vacationMode, handlers) {
           <div class="sheet-card-info">
             <div class="sheet-card-label">Prochain engrais</div>
             <div class="sheet-card-value">${formatDate(nextFert)}</div>
-            <div class="sheet-card-sub">Tous les ${plant.freqEngrais} j${plant.quantiteEngrais ? ' · ' + plant.quantiteEngrais : ''}</div>
+            <div class="sheet-card-sub">Tous les ${esc(plant.freqEngrais)} j${plant.quantiteEngrais ? ' · ' + esc(plant.quantiteEngrais) : ''}</div>
             <div class="sheet-card-sub">Dernier : ${formatDate(plant.dernierEngrais)}</div>
           </div>
           <button class="btn btn-secondary sheet-action-btn" id="sheet-fert">Engrais</button>
@@ -87,14 +88,10 @@ export function openPlantSheet(plant, winterMode, vacationMode, handlers) {
   });
 
   overlay.querySelector('#sheet-delete').addEventListener('click', async () => {
-    const ok = await confirmModal(`Supprimer <strong>${plant.nom}</strong> ?`);
+    const ok = await confirmModal(`Supprimer <strong>${esc(plant.nom)}</strong> ?`);
     if (ok) {
       closeModal(overlay);
       handlers.onDelete(plant.id);
     }
   });
-}
-
-function esc(str) {
-  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;');
 }

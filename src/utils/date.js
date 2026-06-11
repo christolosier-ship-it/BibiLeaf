@@ -6,16 +6,26 @@ export function today() {
   return d;
 }
 
-export function parseDate(str) {
-  if (!str) return null;
-  const d = new Date(str);
-  d.setHours(0, 0, 0, 0);
-  return isNaN(d) ? null : d;
+export function parseDate(value) {
+  if (!value || typeof value !== 'string') return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const [y, m, d] = value.split('-').map(Number);
+  if (!y || !m || !d) return null;
+  const date = new Date(y, m - 1, d);
+  date.setHours(0, 0, 0, 0);
+  if (Number.isNaN(date.getTime())) return null;
+  if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) return null;
+  return date;
 }
 
-export function toISO(date) {
+export function toISO(date = new Date()) {
   if (!date) return null;
-  return date.toISOString().split('T')[0];
+  const localDate = new Date(date);
+  if (Number.isNaN(localDate.getTime())) return null;
+  const y = localDate.getFullYear();
+  const m = String(localDate.getMonth() + 1).padStart(2, '0');
+  const d = String(localDate.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 export function todayISO() {
@@ -24,6 +34,7 @@ export function todayISO() {
 
 export function addDays(date, days) {
   const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() + days);
   return d;
 }
