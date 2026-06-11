@@ -51,14 +51,36 @@ export function confirmModal(message, okLabel = 'Supprimer') {
   });
 }
 
-export function toastMsg(msg, type = 'success') {
+export function toastMsg(msg, type = 'success', opts = {}) {
+  document.querySelectorAll('.toast').forEach(existing => existing.remove());
+
   const toast = document.createElement('div');
   toast.className = `toast toast--${type}`;
-  toast.textContent = msg;
+
+  const text = document.createElement('span');
+  text.textContent = msg;
+  toast.appendChild(text);
+
+  if (opts.actionLabel && typeof opts.onAction === 'function') {
+    const action = document.createElement('button');
+    action.type = 'button';
+    action.className = 'toast-action';
+    action.textContent = opts.actionLabel;
+    action.addEventListener('click', () => {
+      opts.onAction();
+      toast.remove();
+    });
+    toast.appendChild(action);
+  }
+
   document.body.appendChild(toast);
   requestAnimationFrame(() => toast.classList.add('toast--visible'));
-  setTimeout(() => {
+
+  const duration = opts.duration ?? 2500;
+  const timer = setTimeout(() => {
     toast.classList.remove('toast--visible');
     toast.addEventListener('transitionend', () => toast.remove(), { once: true });
-  }, 2500);
+  }, duration);
+
+  return toast;
 }

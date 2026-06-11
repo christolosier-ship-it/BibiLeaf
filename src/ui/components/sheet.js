@@ -2,19 +2,25 @@
 
 import { createModal, closeModal, confirmModal } from './modal.js';
 import { openPlantForm } from './form.js';
-import { nextWaterDate, nextFertDate, urgency } from '../../utils/calc.js';
+import { CARE_STATUS, getPlantCareStatus } from '../../utils/calc.js';
 import { formatDate } from '../../utils/date.js';
 import { esc } from '../../utils/html.js';
 
 export function openPlantSheet(plant, winterMode, vacationMode, handlers) {
-  const u = urgency(plant, winterMode, vacationMode);
-  const nextWater = nextWaterDate(plant, winterMode);
-  const nextFert = nextFertDate(plant, winterMode);
+  const care = getPlantCareStatus(plant, { winterMode, vacationMode });
+  const cfg = CARE_STATUS[care.mainStatus] || CARE_STATUS.none;
 
-  const urgencyColor = { red: '#ff6b6b', orange: '#ffaa44', green: '#5a9a6f', none: '#aaa' };
+  const urgencyColor = {
+    late: '#ff6b6b',
+    today: '#ffaa44',
+    soon: '#e7c94b',
+    ok: '#5a9a6f',
+    paused: '#aaa',
+    none: '#aaa',
+  };
 
   const overlay = createModal(`
-    <div class="sheet-header" style="border-bottom: 3px solid ${urgencyColor[u]}">
+    <div class="sheet-header" style="border-bottom: 3px solid ${urgencyColor[care.mainStatus]}">
       <button class="btn-back" id="sheet-close">←</button>
       <h2>${esc(plant.nom || 'Plante')}</h2>
       <div class="sheet-header-actions">
@@ -31,13 +37,15 @@ export function openPlantSheet(plant, winterMode, vacationMode, handlers) {
 
       ${plant.espece ? `<div class="sheet-meta">🌿 ${esc(plant.espece)}</div>` : ''}
       ${plant.piece ? `<div class="sheet-meta">📍 ${esc(plant.piece)}</div>` : ''}
+      <div class="sheet-meta">${cfg.emoji} ${esc(cfg.label)}</div>
 
       <div class="sheet-cards">
         <div class="sheet-card">
           <div class="sheet-card-icon">💧</div>
           <div class="sheet-card-info">
-            <div class="sheet-card-label">Prochain arrosage</div>
-            <div class="sheet-card-value">${formatDate(nextWater)}</div>
+            <div class="sheet-card-label">Arrosage</div>
+            <div class="sheet-card-value">${esc(care.water.label)}</div>
+            <div class="sheet-card-sub">Prochain : ${formatDate(care.water.dueDate)}</div>
             <div class="sheet-card-sub">Toutes les ${esc(plant.freqEau)} j${winterMode ? ' (❄️ hiver)' : ''}${plant.volumeEau ? ' · ' + esc(plant.volumeEau) : ''}</div>
             <div class="sheet-card-sub">Dernier : ${formatDate(plant.derniereEau)}</div>
           </div>
@@ -48,8 +56,9 @@ export function openPlantSheet(plant, winterMode, vacationMode, handlers) {
         <div class="sheet-card">
           <div class="sheet-card-icon">🌿</div>
           <div class="sheet-card-info">
-            <div class="sheet-card-label">Prochain engrais</div>
-            <div class="sheet-card-value">${formatDate(nextFert)}</div>
+            <div class="sheet-card-label">Engrais</div>
+            <div class="sheet-card-value">${esc(care.fertilizer.label)}</div>
+            <div class="sheet-card-sub">Prochain : ${formatDate(care.fertilizer.dueDate)}</div>
             <div class="sheet-card-sub">Tous les ${esc(plant.freqEngrais)} j${plant.quantiteEngrais ? ' · ' + esc(plant.quantiteEngrais) : ''}</div>
             <div class="sheet-card-sub">Dernier : ${formatDate(plant.dernierEngrais)}</div>
           </div>

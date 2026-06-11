@@ -177,6 +177,7 @@ button { cursor: pointer; border: none; background: none; }
 .plant-card:active { transform: scale(0.98); }
 .plant-card.urgent-red    { border-color: var(--red); background: #fff8f8; }
 .plant-card.urgent-orange { border-color: var(--orange); background: #fffaf5; }
+.plant-card.urgent-soon   { border-color: #e7c94b; background: #fffdf1; }
 .plant-card.urgent-green  { border-color: var(--green-soft); }
 .plant-card.urgent-none   { border-color: var(--text-light); }
 
@@ -214,9 +215,20 @@ button { cursor: pointer; border: none; background: none; }
   text-overflow: ellipsis;
 }
 .urgency-badge {
-  font-size: 1.1rem;
+  font-size: 0.72rem;
+  font-weight: 900;
   flex-shrink: 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--green-card);
+  color: var(--green-deep);
+  white-space: nowrap;
 }
+.urgency-badge.urgent-red { background: #ffe8e8; color: var(--red); }
+.urgency-badge.urgent-orange { background: #fff0dc; color: #b86600; }
+.urgency-badge.urgent-soon { background: #fff7c7; color: #9a7a00; }
+.urgency-badge.urgent-green { background: var(--green-card); color: var(--green-deep); }
+.urgency-badge.urgent-none { background: #f0f0f0; color: var(--text-soft); }
 .card-species {
   font-size: 0.75rem;
   color: var(--text-soft);
@@ -230,7 +242,8 @@ button { cursor: pointer; border: none; background: none; }
 }
 .card-next {
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  gap: 3px;
   margin-top: 6px;
   font-size: 0.8rem;
   font-weight: 700;
@@ -651,8 +664,22 @@ label textarea { resize: vertical; }
   z-index: 300;
   opacity: 0;
   transition: opacity var(--transition), transform var(--transition);
-  white-space: nowrap;
+  white-space: normal;
   box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  max-width: calc(100vw - 28px);
+}
+.toast-action {
+  border: 0;
+  background: rgba(255,255,255,0.18);
+  color: var(--white);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-weight: 900;
+  text-decoration: underline;
 }
 .toast--visible { opacity: 1; transform: translateX(-50%) translateY(0); }
 .toast--error { background: var(--red); }
@@ -672,7 +699,7 @@ label textarea { resize: vertical; }
 /* ========== DASHBOARD STATS ========== */
 .dash-summary {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 10px;
   margin-bottom: 16px;
 }
@@ -697,6 +724,7 @@ label textarea { resize: vertical; }
 }
 .dash-stat--red .dash-stat-val  { color: var(--red); }
 .dash-stat--orange .dash-stat-val { color: var(--orange); }
+.dash-stat--soon .dash-stat-val { color: #b59a00; }
 .dash-stat--green .dash-stat-val  { color: var(--green-mid); }
 
 /* ========== SCREEN TITLE ========== */

@@ -1,21 +1,25 @@
 // src/ui/components/card.js — Carte plante
 
-import { urgency, nextWaterDate, nextFertDate } from '../../utils/calc.js';
-import { formatDate } from '../../utils/date.js';
+import { CARE_STATUS, getPlantCareStatus } from '../../utils/calc.js';
 import { esc } from '../../utils/html.js';
 
-const URGENCY_CONFIG = {
-  red:    { emoji: '🚨', label: 'En retard !',    cls: 'urgent-red' },
-  orange: { emoji: '💧', label: 'À arroser',      cls: 'urgent-orange' },
-  green:  { emoji: '✅', label: 'OK',             cls: 'urgent-green' },
-  none:   { emoji: '😴', label: 'Vacances',       cls: 'urgent-none' },
-};
+function mainBadge(care) {
+  if (care.mainStatus === 'today') {
+    return `${care.mainAction === 'fertilizer' ? '🌿' : '💧'} Aujourd'hui`;
+  }
+  const cfg = CARE_STATUS[care.mainStatus] || CARE_STATUS.none;
+  return `${cfg.emoji} ${cfg.label}`;
+}
+
+function careLine(icon, item, suffix = '', className = '') {
+  if (!item.enabled) return '';
+  const extra = suffix ? ` · ${esc(suffix)}` : '';
+  return `<span class="${className}">${icon} ${esc(item.label)}${extra}</span>`;
+}
 
 export function renderCard(plant, winterMode, vacationMode, handlers) {
-  const u = urgency(plant, winterMode, vacationMode);
-  const cfg = URGENCY_CONFIG[u];
-  const nextWater = nextWaterDate(plant, winterMode);
-  const nextFert  = nextFertDate(plant, winterMode);
+  const care = getPlantCareStatus(plant, { winterMode, vacationMode });
+  const cfg = CARE_STATUS[care.mainStatus] || CARE_STATUS.none;
 
   const card = document.createElement('div');
   card.className = `plant-card ${cfg.cls}`;
@@ -32,13 +36,13 @@ export function renderCard(plant, winterMode, vacationMode, handlers) {
     <div class="card-body">
       <div class="card-header">
         <span class="card-name">${esc(plant.nom || 'Sans nom')}</span>
-        <span class="urgency-badge ${cfg.cls}">${cfg.emoji}</span>
+        <span class="urgency-badge ${cfg.cls}">${esc(mainBadge(care))}</span>
       </div>
       ${plant.espece ? `<div class="card-species">${esc(plant.espece)}</div>` : ''}
       ${plant.piece ? `<div class="card-room">📍 ${esc(plant.piece)}</div>` : ''}
       <div class="card-next">
-        <span class="card-water">💧 ${formatDate(nextWater)}</span>
-        ${plant.engraisActif ? `<span class="card-fert">🌿 ${formatDate(nextFert)}</span>` : ''}
+        ${careLine('💧', care.water, plant.volumeEau, 'card-water')}
+        ${plant.engraisActif ? careLine('🌿', care.fertilizer, plant.quantiteEngrais, 'card-fert') : ''}
       </div>
     </div>
     <div class="card-actions">

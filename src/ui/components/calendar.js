@@ -1,46 +1,55 @@
 // src/ui/components/calendar.js — Vue calendrier légère
 
-import { nextWaterDate } from '../../utils/calc.js';
-import { toISO, addDays } from '../../utils/date.js';
+import { getPlantCareStatus } from '../../utils/calc.js';
+import { today, toISO, addDays } from '../../utils/date.js';
 import { esc } from '../../utils/html.js';
 
-export function renderCalendar(plants, winterMode, container) {
-  const today = new Date();
-  today.setHours(0,0,0,0);
+export function renderCalendar(plants, winterMode, container, vacationMode = false) {
+  const start = today();
 
-  // Construire un index date → plantes
+  if (vacationMode) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-emoji">🌴</div><h3>Pause vacances</h3><p>Le calendrier est suspendu jusqu'à la reprise du suivi.</p></div>`;
+    return;
+  }
+
+  // Construire un index date → actions plantes
   const events = {};
   plants.forEach(p => {
-    const nextDate = nextWaterDate(p, winterMode);
-    if (!nextDate) return;
-    if (!events[nextDate]) events[nextDate] = [];
-    events[nextDate].push(p);
+    const care = getPlantCareStatus(p, { winterMode, vacationMode });
+    if (care.water.enabled && care.water.dueDate) {
+      if (!events[care.water.dueDate]) events[care.water.dueDate] = [];
+      events[care.water.dueDate].push({ plant: p, icon: '💧' });
+    }
+    if (care.fertilizer.enabled && care.fertilizer.dueDate) {
+      if (!events[care.fertilizer.dueDate]) events[care.fertilizer.dueDate] = [];
+      events[care.fertilizer.dueDate].push({ plant: p, icon: '🌿' });
+    }
   });
 
   // Afficher 14 jours
   const days = [];
   for (let i = -1; i < 14; i++) {
-    const d = addDays(today, i);
+    const d = addDays(start, i);
     days.push(d);
   }
 
   container.innerHTML = `<div class="calendar-grid">
     ${days.map(d => {
       const iso = toISO(d);
-      const dayPlants = events[iso] || [];
-      const isToday = iso === toISO(today);
-      const isPast = d < today;
+      const dayEvents = events[iso] || [];
+      const isToday = iso === toISO(start);
+      const isPast = d < start;
       return `
         <div class="cal-day ${isToday ? 'cal-today' : ''} ${isPast ? 'cal-past' : ''}">
           <div class="cal-day-label">${d.toLocaleDateString('fr-FR', { weekday:'short', day:'numeric' })}</div>
           <div class="cal-events">
-            ${dayPlants.map(p => `
+            ${dayEvents.map(({ plant, icon }) => `
               <div class="cal-event ${isPast ? 'cal-event--late' : ''}">
-                ${p.photo ? `<img src="${esc(p.photo)}" class="cal-event-photo" alt="">` : '💧'}
-                <span>${esc(p.nom)}</span>
+                ${plant.photo ? `<img src="${esc(plant.photo)}" class="cal-event-photo" alt="">` : icon}
+                <span>${icon} ${esc(plant.nom)}</span>
               </div>
             `).join('')}
-            ${dayPlants.length === 0 ? `<div class="cal-empty">—</div>` : ''}
+            ${dayEvents.length === 0 ? `<div class="cal-empty">—</div>` : ''}
           </div>
         </div>
       `;

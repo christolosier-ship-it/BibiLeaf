@@ -1,6 +1,6 @@
 # 🪴 BibiLeaf
 
-**Version : v1.0.1**
+**Version : v1.1.0**
 
 > Suivi doux et minimaliste de vos plantes d’intérieur.  
 > PWA mobile · Offline-first · Zéro backend · Zéro compte
@@ -20,7 +20,7 @@ BibiLeaf est une application web progressive (PWA) conçue pour suivre simplemen
 ### Suivi des plantes
 
 - Ajouter, modifier, dupliquer et supprimer une plante
-- Une photo par plante (prise directe ou galerie)
+- Une photo par plante (prise directe ou galerie, compressée avant stockage)
 - Champs : nom, espèce, pièce, notes
 - Suivi de l’arrosage (fréquence, volume, dernière date)
 - Suivi de l’engrais optionnel (fréquence, quantité, dernière date)
@@ -29,7 +29,9 @@ BibiLeaf est une application web progressive (PWA) conçue pour suivre simplemen
 
 - Calcul automatique de la prochaine date d’arrosage et d’engrais
 - Tri des plantes par urgence dès l’ouverture
-- Indicateurs visuels : 🚨 en retard · 💧 aujourd’hui · ✅ OK
+- Indicateurs visuels distincts : 🚨 retard · 💧 aujourd’hui · 🟡 bientôt · ✅ OK · 🌴 pause
+- Urgence combinée eau + engrais pour les cartes, le tri et le dashboard
+- Actions rapides arrosage/engrais annulables pendant quelques secondes
 - Dashboard avec compteurs par statut
 
 ### Modes globaux
@@ -37,11 +39,11 @@ BibiLeaf est une application web progressive (PWA) conçue pour suivre simplemen
 |Mode          |Effet                                                    |
 |--------------|---------------------------------------------------------|
 |❄️ **Hiver**   |Multiplie toutes les fréquences × 1,5 (arrondi inférieur)|
-|🌴 **Vacances**|Suspend le décompte et met les notifications en pause    |
+|🌴 **Vacances**|Suspend réellement le décompte, puis décale les dernières dates à la reprise|
 
 ### Calendrier
 
-- Vue sur 14 jours des prochains arrosages
+- Vue sur 14 jours des prochains arrosages et engrais
 - Affichage des retards en rouge
 
 ### Import / Export Excel
@@ -54,6 +56,8 @@ BibiLeaf est une application web progressive (PWA) conçue pour suivre simplemen
 
 - Installable sur l’écran d’accueil (iPhone Safari, Android Chrome)
 - Fonctionnement 100 % hors ligne après la première ouverture
+- Service worker versionné avec recherche de mise à jour au démarrage et activation rapide
+- Bouton de maintenance pour recharger la dernière version sans toucher aux plantes ni aux réglages
 - Notifications locales pour les rappels d’arrosage
 
 -----
@@ -241,7 +245,7 @@ La permission n’est jamais demandée automatiquement : elle est déclenchée u
 - ✅ Pas d’historique complet des actions
 - ✅ Export / Import via un unique template Excel
 - ✅ Données utilisateur stockées localement sur l’appareil
-- ✅ Cache applicatif versionné (`bibileaf-v1.0.1`)
+- ✅ Cache applicatif versionné (`bibileaf-v1.1.0`)
 
 -----
 
