@@ -48,6 +48,7 @@ export function renderCard(plant, winterMode, vacationMode, handlers) {
     <div class="card-actions">
       <button class="btn-water btn-action" title="Arroser" data-id="${esc(plant.id)}">💧</button>
       ${plant.engraisActif ? `<button class="btn-fert btn-action" title="Engrais" data-id="${esc(plant.id)}">🌿</button>` : ''}
+      <button class="btn-correct btn-action btn-action--quiet" title="Corriger une date" data-id="${esc(plant.id)}">🗓️</button>
     </div>
   `;
 
@@ -62,6 +63,12 @@ export function renderCard(plant, winterMode, vacationMode, handlers) {
   });
 
   // Bouton engrais rapide
+  const correctBtn = card.querySelector('.btn-correct');
+  correctBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    handlers.onCorrectDate?.(plant.id, care.mainAction || 'water');
+  });
+
   const fertBtn = card.querySelector('.btn-fert');
   if (fertBtn) {
     fertBtn.addEventListener('click', e => {

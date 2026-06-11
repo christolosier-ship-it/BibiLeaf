@@ -26,10 +26,39 @@
 </head>
 <body>
 
-  <!-- Écran de chargement -->
-  <div id="loading" class="loading-screen">
-    <div class="loading-logo">🪴</div>
-    <div style="font-weight:900;color:var(--green-deep);font-size:1.4rem">BibiLeaf</div>
+  <!-- Animation de démarrage HTML/SVG -->
+  <div id="splash-screen" class="splash-screen" aria-label="Chargement de BibiLeaf">
+    <div class="splash-card">
+      <svg class="splash-svg" viewBox="0 0 220 220" role="img" aria-label="Un petit pot BibiLeaf arrosé fait pousser une plante">
+        <circle class="splash-sun" cx="172" cy="42" r="15"></circle>
+        <g class="splash-can">
+          <path d="M138 82 h42 a10 10 0 0 1 10 10 v23 h-62 v-23 a10 10 0 0 1 10-10z" fill="#9fd5ea"></path>
+          <path d="M179 88 q20 5 28 25" fill="none" stroke="#75b6cf" stroke-width="9" stroke-linecap="round"></path>
+          <path d="M126 93 l-23 13" fill="none" stroke="#75b6cf" stroke-width="9" stroke-linecap="round"></path>
+          <circle cx="153" cy="94" r="4" fill="#f9ffff"></circle>
+        </g>
+        <g class="splash-drops">
+          <path class="drop drop-1" d="M99 116 q6 8 0 15 q-6-7 0-15z" fill="#6fbbe8"></path>
+          <path class="drop drop-2" d="M113 121 q5 7 0 13 q-5-6 0-13z" fill="#6fbbe8"></path>
+          <path class="drop drop-3" d="M87 121 q5 7 0 13 q-5-6 0-13z" fill="#6fbbe8"></path>
+        </g>
+        <g class="splash-plant">
+          <path class="sprout-stem" d="M110 151 C110 137 110 122 110 105" fill="none" stroke="#4f9b62" stroke-width="6" stroke-linecap="round"></path>
+          <path class="sprout-leaf sprout-leaf-left" d="M109 123 C88 107 71 113 65 132 C82 136 101 134 109 123z" fill="#72bd74"></path>
+          <path class="sprout-leaf sprout-leaf-right" d="M112 119 C135 101 154 107 160 127 C141 133 121 132 112 119z" fill="#5aaf68"></path>
+        </g>
+        <g class="splash-pot">
+          <ellipse cx="110" cy="153" rx="56" ry="13" fill="#6f4a31"></ellipse>
+          <path d="M58 148 h104 l-12 51 a12 12 0 0 1-12 10 h-56 a12 12 0 0 1-12-10z" fill="#d88355"></path>
+          <path d="M53 139 h114 a8 8 0 0 1 8 8 v5 a8 8 0 0 1-8 8 h-114 a8 8 0 0 1-8-8 v-5 a8 8 0 0 1 8-8z" fill="#e49a6b"></path>
+          <path d="M91 181 q19 14 38 0" fill="none" stroke="#8b5e3c" stroke-width="5" stroke-linecap="round"></path>
+          <circle cx="88" cy="171" r="4" fill="#8b5e3c"></circle>
+          <circle cx="132" cy="171" r="4" fill="#8b5e3c"></circle>
+        </g>
+      </svg>
+      <div class="splash-title">BibiLeaf</div>
+      <div class="splash-subtitle">On réveille doucement tes plantes…</div>
+    </div>
   </div>
 
   <!-- App principale -->
@@ -67,7 +96,7 @@
       </button>
       <button class="nav-btn" data-screen="calendar">
         <span class="nav-icon">📅</span>
-        <span>Calendrier</span>
+        <span>Timeline</span>
       </button>
       <button class="nav-btn" data-screen="settings">
         <span class="nav-icon">⚙️</span>

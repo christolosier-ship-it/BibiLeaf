@@ -7,7 +7,7 @@ import { renderCard } from './src/ui/components/card.js';
 import { openPlantForm } from './src/ui/components/form.js';
 import { openPlantSheet } from './src/ui/components/sheet.js';
 import { renderCalendar } from './src/ui/components/calendar.js';
-import { toastMsg, confirmModal } from './src/ui/components/modal.js';
+import { toastMsg, confirmModal, createModal, closeModal } from './src/ui/components/modal.js';
 import { exportXLSX, importXLSX, downloadTemplate } from './src/import-export/xlsx.js';
 import { esc } from './src/utils/html.js';
 
@@ -20,6 +20,8 @@ let state = {
   vacationMode: false,
   currentScreen: 'home', // home | calendar | settings
   filter: 'all',         // all | late | today | soon | ok
+  roomFilter: 'all',     // all | room:<name> | __no_room__
+  searchQuery: '',
   vacationStartedAt: null,
 };
 
@@ -34,13 +36,14 @@ async function init() {
   state.winterMode  = (await settings.get('winterMode'))  || false;
   state.vacationMode = (await settings.get('vacationMode')) || false;
   state.vacationStartedAt = (await settings.get('vacationStartedAt')) || null;
+  state.roomFilter = (await settings.get('roomFilter')) || 'all';
 
   // Charger les plantes
   state.plants = await db.getAll();
 
-  // Cacher l'écran de chargement
-  document.getElementById('loading').style.display = 'none';
+  // Afficher l'app et laisser le splash HTML/SVG se masquer sans bloquer l'usage.
   document.getElementById('app').style.display = 'flex';
+  setupSplashScreen();
 
   renderAll();
 
@@ -92,12 +95,29 @@ function renderHome(container) {
     if (mainStatus in counts) counts[mainStatus] += 1;
   });
 
+  const roomOptions = buildRoomOptions(sorted);
+  if (state.roomFilter !== 'all' && !roomOptions.some(option => option.value === state.roomFilter)) {
+    state.roomFilter = 'all';
+    settings.set('roomFilter', 'all');
+  }
+
+  const normalizedQuery = normalizeSearch(state.searchQuery);
   let filtered = sorted;
-  if (state.filter !== 'all') filtered = sorted.filter(p => careById.get(p.id).mainStatus === state.filter);
+  if (state.filter !== 'all') filtered = filtered.filter(p => careById.get(p.id).mainStatus === state.filter);
+  if (state.roomFilter !== 'all') {
+    filtered = filtered.filter(p => roomFilterValue(p) === state.roomFilter);
+  }
+  if (normalizedQuery) {
+    filtered = filtered.filter(p => matchesSearch(p, normalizedQuery));
+  }
 
   const vacationNotice = state.vacationMode
     ? `<div class="settings-section" style="margin-bottom:14px"><strong>🌴 Pause vacances active</strong><br><span style="color:var(--text-soft);font-size:.85rem">Le décompte est suspendu depuis ${esc(state.vacationStartedAt || 'aujourd’hui')}.</span></div>`
     : '';
+
+  const emptyExplorerMessage = state.roomFilter !== 'all' && !normalizedQuery && state.filter === 'all'
+    ? 'Aucune plante dans cette pièce.'
+    : 'Aucune plante ne correspond à ta recherche.';
 
   container.innerHTML = `
     ${vacationNotice}
@@ -119,39 +139,131 @@ function renderHome(container) {
         <div class="dash-stat-label">${state.vacationMode ? '🌴 Pause' : '✅ OK'}</div>
       </div>
     </div>
-    <div class="filter-bar" id="filter-bar">
-      <button class="filter-chip ${state.filter === 'all' ? 'filter-chip--active' : ''}" data-filter="all">Toutes (${sorted.length})</button>
-      <button class="filter-chip ${state.filter === 'late' ? 'filter-chip--active' : ''}" data-filter="late">🚨 Retard (${counts.late})</button>
-      <button class="filter-chip ${state.filter === 'today' ? 'filter-chip--active' : ''}" data-filter="today">💧 Aujourd'hui (${counts.today})</button>
-      <button class="filter-chip ${state.filter === 'soon' ? 'filter-chip--active' : ''}" data-filter="soon">🟡 Bientôt (${counts.soon})</button>
-      <button class="filter-chip ${state.filter === 'ok' ? 'filter-chip--active' : ''}" data-filter="ok">✅ OK (${counts.ok})</button>
-    </div>
+
+    <section class="explorer-panel" aria-label="Explorer mes plantes">
+      <div class="explorer-title">Explorer mes plantes</div>
+      <div class="search-box">
+        <span aria-hidden="true">🔎</span>
+        <input id="plant-search" type="search" placeholder="Rechercher une plante..." value="${esc(state.searchQuery)}" autocomplete="off">
+        <button id="clear-search" class="search-clear" aria-label="Effacer la recherche" ${state.searchQuery ? '' : 'hidden'}>×</button>
+      </div>
+      <div class="room-filter-bar" id="room-filter-bar" aria-label="Filtrer par pièce">
+        ${roomOptions.map(option => `
+          <button class="room-chip ${state.roomFilter === option.value ? 'room-chip--active' : ''}" data-room-filter="${esc(option.value)}">${esc(option.label)} (${option.count})</button>
+        `).join('')}
+      </div>
+      <div class="filter-bar" id="filter-bar" aria-label="Filtrer par urgence">
+        <button class="filter-chip ${state.filter === 'all' ? 'filter-chip--active' : ''}" data-filter="all">Toutes (${sorted.length})</button>
+        <button class="filter-chip ${state.filter === 'late' ? 'filter-chip--active' : ''}" data-filter="late">🚨 Retard (${counts.late})</button>
+        <button class="filter-chip ${state.filter === 'today' ? 'filter-chip--active' : ''}" data-filter="today">💧 Aujourd'hui (${counts.today})</button>
+        <button class="filter-chip ${state.filter === 'soon' ? 'filter-chip--active' : ''}" data-filter="soon">🟡 Bientôt (${counts.soon})</button>
+        <button class="filter-chip ${state.filter === 'ok' ? 'filter-chip--active' : ''}" data-filter="ok">✅ OK (${counts.ok})</button>
+      </div>
+    </section>
+
     <div class="plant-list" id="plant-list"></div>
     ${state.plants.length === 0 ? emptyState() : ''}
+    ${state.plants.length > 0 && filtered.length === 0 ? softEmptyState(emptyExplorerMessage) : ''}
   `;
 
-  // Filtres
   container.querySelector('#filter-bar').addEventListener('click', e => {
     const chip = e.target.closest('[data-filter]');
     if (chip) { state.filter = chip.dataset.filter; renderAll(); }
   });
 
-  // Cartes
+  container.querySelector('#room-filter-bar').addEventListener('click', async e => {
+    const chip = e.target.closest('[data-room-filter]');
+    if (!chip) return;
+    state.roomFilter = chip.dataset.roomFilter;
+    await settings.set('roomFilter', state.roomFilter);
+    renderAll();
+  });
+
+  const searchInput = container.querySelector('#plant-search');
+  searchInput.addEventListener('input', e => {
+    const cursor = e.target.selectionStart ?? e.target.value.length;
+    state.searchQuery = e.target.value;
+    renderAll();
+    requestAnimationFrame(() => {
+      const nextInput = document.getElementById('plant-search');
+      nextInput?.focus();
+      nextInput?.setSelectionRange(cursor, cursor);
+    });
+  });
+  container.querySelector('#clear-search').addEventListener('click', () => {
+    state.searchQuery = '';
+    renderAll();
+  });
+
   const list = container.querySelector('#plant-list');
   const handlers = {
     onOpen:  id => { const p = getPlant(id); openPlantSheet(p, state.winterMode, state.vacationMode, sheetHandlers()); },
     onWater: id => markWater(id),
     onFert:  id => markFert(id),
+    onCorrectDate: (id, action = 'water') => openCorrectDateModal(id, action),
   };
   filtered.forEach(p => list.appendChild(renderCard(p, state.winterMode, state.vacationMode, handlers)));
 }
-
 function emptyState() {
   return `<div class="empty-state">
     <div class="empty-emoji">🪴</div>
     <h3>Aucune plante encore !</h3>
     <p>Appuie sur <strong>+</strong> pour ajouter<br>ta première plante.</p>
   </div>`;
+}
+
+
+function softEmptyState(message) {
+  return `<div class="empty-state empty-state--soft">
+    <div class="empty-emoji">🍃</div>
+    <h3>${esc(message)}</h3>
+    <p>Essaie une autre pièce ou efface la recherche.</p>
+  </div>`;
+}
+
+function normalizeSearch(value) {
+  return String(value ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
+function roomName(plant) {
+  return String(plant?.piece || '').trim();
+}
+
+function roomFilterValue(plant) {
+  const room = roomName(plant);
+  return room ? `room:${room}` : '__no_room__';
+}
+
+function buildRoomOptions(plants) {
+  const counts = new Map();
+  plants.forEach(plant => {
+    const value = roomFilterValue(plant);
+    const label = value === '__no_room__' ? 'Sans pièce' : roomName(plant);
+    const current = counts.get(value) || { value, label, count: 0 };
+    current.count += 1;
+    counts.set(value, current);
+  });
+
+  const rooms = [...counts.values()]
+    .filter(option => option.value !== '__no_room__')
+    .sort((a, b) => a.label.localeCompare(b.label, 'fr'));
+  const noRoom = counts.get('__no_room__');
+  return [
+    { value: 'all', label: 'Toutes', count: plants.length },
+    ...rooms,
+    ...(noRoom ? [noRoom] : []),
+  ];
+}
+
+function matchesSearch(plant, query) {
+  const haystack = [plant.nom, plant.espece, plant.piece, plant.notes]
+    .map(normalizeSearch)
+    .join(' ');
+  return haystack.includes(query);
 }
 
 function sheetHandlers() {
@@ -161,6 +273,7 @@ function sheetHandlers() {
     onEdit:      updated => savePlant(updated),
     onDuplicate: id => { const copy = duplicatePlant(getPlant(id)); savePlant(copy); },
     onDelete:    id => deletePlant(id),
+    onCorrectDate: (id, action = 'water') => openCorrectDateModal(id, action),
   };
 }
 
@@ -168,8 +281,12 @@ function sheetHandlers() {
 // Écran Calendrier
 // ============================================================
 function renderCalendarScreen(container) {
-  container.innerHTML = `<div class="screen-title">📅 Calendrier</div><div id="cal-container"></div>`;
-  renderCalendar(state.plants, state.winterMode, container.querySelector('#cal-container'), state.vacationMode);
+  container.innerHTML = `<div class="screen-title">🌿 Timeline</div><div id="cal-container"></div>`;
+  renderCalendar(state.plants, state.winterMode, container.querySelector('#cal-container'), state.vacationMode, {
+    onWater: id => markWater(id),
+    onFert: id => markFert(id),
+    onCorrectDate: (id, action = 'water') => openCorrectDateModal(id, action),
+  });
 }
 
 // ============================================================
@@ -179,24 +296,22 @@ function renderSettings(container) {
   container.innerHTML = `
     <div class="screen-title">⚙️ Réglages</div>
 
-    <div class="settings-section">
-      <div class="settings-title">Modes globaux</div>
-
+    <div class="settings-section settings-card">
+      <div class="settings-title">A. Modes</div>
       <div class="settings-row">
         <div class="settings-row-info">
           <div class="settings-row-label">❄️ Mode hiver</div>
-          <div class="settings-row-sub">Multiplie la fréquence d'arrosage × 1,5</div>
+          <div class="settings-row-sub">Le mode hiver espace les arrosages.</div>
         </div>
         <label class="label-toggle" style="margin:0">
           <input type="checkbox" id="toggle-winter" ${state.winterMode ? 'checked' : ''}>
           <span class="toggle-slider"></span>
         </label>
       </div>
-
       <div class="settings-row">
         <div class="settings-row-info">
           <div class="settings-row-label">🌴 Mode vacances</div>
-          <div class="settings-row-sub">Suspend le suivi et les notifications</div>
+          <div class="settings-row-sub">Le mode vacances suspend le décompte jusqu’à ton retour.</div>
         </div>
         <label class="label-toggle" style="margin:0">
           <input type="checkbox" id="toggle-vacation" ${state.vacationMode ? 'checked' : ''}>
@@ -205,23 +320,35 @@ function renderSettings(container) {
       </div>
     </div>
 
-    <div class="settings-section">
-      <div class="settings-title">Données</div>
+    <div class="settings-section settings-card">
+      <div class="settings-title">B. Notifications</div>
+      <div class="settings-note">Les notifications dépendent du navigateur et de l’installation PWA.</div>
+      <button class="btn-settings-action" id="btn-notif">🔔 Tester les notifications</button>
+    </div>
+
+    <div class="settings-section settings-card">
+      <div class="settings-title">C. Sauvegarde</div>
       <button class="btn-settings-action" id="btn-export">📤 Exporter en Excel</button>
       <button class="btn-settings-action" id="btn-import">📥 Importer depuis Excel</button>
-      <button class="btn-settings-action" id="btn-template">📋 Télécharger le template</button>
+      <button class="btn-settings-action" id="btn-template">📋 Télécharger le modèle Excel</button>
+      <div class="settings-note">L’Excel ne contient pas les photos.</div>
       <input type="file" id="import-file" accept=".xlsx" style="display:none">
     </div>
 
-    <div class="settings-section">
-      <div class="settings-title">App</div>
-      <button class="btn-settings-action" id="btn-notif">🔔 Tester les notifications</button>
+    <div class="settings-section settings-card">
+      <div class="settings-title">D. Maintenance</div>
       <button class="btn-settings-action" id="btn-reload-latest">🔄 Recharger la dernière version</button>
+      <div class="settings-note">Tes plantes et réglages sont conservés.</div>
       <button class="btn-settings-action danger" id="btn-reset">🗑️ Supprimer toutes les plantes</button>
     </div>
 
-    <div style="text-align:center;padding:20px;color:var(--text-light);font-size:0.75rem">
-      BibiLeaf v1.1.0 · Les données restent stockées localement sur cet appareil 🌿
+    <div class="settings-section settings-card">
+      <div class="settings-title">E. Confidentialité locale / À propos</div>
+      <div class="settings-about">
+        <strong>BibiLeaf V1.2.0</strong><br>
+        Tes données restent stockées localement sur cet appareil.<br>
+        Aucun compte, aucun cloud, aucune publicité.
+      </div>
     </div>
   `;
 
@@ -297,6 +424,85 @@ function renderSettings(container) {
 // ============================================================
 // Actions métier
 // ============================================================
+
+function openCorrectDateModal(id, defaultAction = 'water') {
+  const plant = getPlant(id);
+  if (!plant) return;
+  const canFert = !!plant.engraisActif;
+  const action = defaultAction === 'fertilizer' && canFert ? 'fertilizer' : 'water';
+  const currentValue = action === 'fertilizer' ? plant.dernierEngrais : plant.derniereEau;
+
+  const overlay = createModal(`
+    <div class="form-header">
+      <button class="btn-back" id="correct-close">←</button>
+      <h2>Corriger une date</h2>
+    </div>
+    <div class="form-body quick-date-form">
+      <div class="quick-date-plant">${esc(plant.nom || 'Plante')}</div>
+      <div class="quick-date-actions" role="group" aria-label="Choix action">
+        <button class="quick-date-choice ${action === 'water' ? 'quick-date-choice--active' : ''}" data-action="water">💧 Arrosage</button>
+        ${canFert ? `<button class="quick-date-choice ${action === 'fertilizer' ? 'quick-date-choice--active' : ''}" data-action="fertilizer">🌿 Engrais</button>` : ''}
+      </div>
+      <label>Date
+        <input type="date" id="correct-date" value="${esc(currentValue || todayISO())}" max="${esc(todayISO())}">
+      </label>
+      <div class="quick-date-shortcuts">
+        <button class="quick-date-shortcut" data-days="0">Aujourd’hui</button>
+        <button class="quick-date-shortcut" data-days="-1">Hier</button>
+        <button class="quick-date-shortcut" data-days="-2">Avant-hier</button>
+      </div>
+      <div class="modal-btns">
+        <button class="btn btn-secondary" id="correct-cancel">Annuler</button>
+        <button class="btn btn-primary" id="correct-save">Enregistrer</button>
+      </div>
+    </div>
+  `);
+
+  let selectedAction = action;
+  const dateInput = overlay.querySelector('#correct-date');
+
+  overlay.querySelector('#correct-close').addEventListener('click', () => closeModal(overlay));
+  overlay.querySelector('#correct-cancel').addEventListener('click', () => closeModal(overlay));
+
+  overlay.querySelectorAll('[data-action]').forEach(button => {
+    button.addEventListener('click', () => {
+      selectedAction = button.dataset.action;
+      overlay.querySelectorAll('[data-action]').forEach(btn => btn.classList.toggle('quick-date-choice--active', btn === button));
+      dateInput.value = selectedAction === 'fertilizer'
+        ? (plant.dernierEngrais || todayISO())
+        : (plant.derniereEau || todayISO());
+    });
+  });
+
+  overlay.querySelectorAll('[data-days]').forEach(button => {
+    button.addEventListener('click', () => {
+      dateInput.value = toISO(addDays(today(), Number(button.dataset.days)));
+    });
+  });
+
+  overlay.querySelector('#correct-save').addEventListener('click', async () => {
+    const selectedDate = dateInput.value;
+    const parsed = parseDate(selectedDate);
+    if (!parsed) {
+      toastMsg('Choisis une date valide.', 'error');
+      return;
+    }
+    if (diffDays(parsed, today()) > 0) {
+      toastMsg('La date ne peut pas être dans le futur.', 'error');
+      return;
+    }
+    const updated = selectedAction === 'fertilizer'
+      ? { ...plant, dernierEngrais: selectedDate }
+      : { ...plant, derniereEau: selectedDate };
+    await db.put(updated);
+    state.plants = await db.getAll();
+    closeModal(overlay);
+    toastMsg('Date corrigée.');
+    renderAll();
+    scheduleNotifications();
+  });
+}
+
 async function markWater(id) {
   const plant = getPlant(id);
   if (!plant) return;
@@ -425,6 +631,22 @@ async function reloadLatestVersion() {
   }
   toastMsg('Rechargement de la dernière version…');
   setTimeout(() => window.location.reload(), 400);
+}
+
+
+function setupSplashScreen() {
+  const splash = document.getElementById('splash-screen') || document.getElementById('loading');
+  if (!splash) return;
+  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const alreadySeen = sessionStorage.getItem('bibileaf-splash-seen') === '1';
+  const delay = reduceMotion ? 350 : (alreadySeen ? 250 : 4800);
+  if (alreadySeen) splash.classList.add('splash-screen--quick');
+  window.setTimeout(() => {
+    splash.classList.add('splash-hidden');
+    sessionStorage.setItem('bibileaf-splash-seen', '1');
+    splash.addEventListener('transitionend', () => splash.remove(), { once: true });
+    window.setTimeout(() => splash.remove(), 700);
+  }, delay);
 }
 
 function registerServiceWorkerUpdateFlow() {

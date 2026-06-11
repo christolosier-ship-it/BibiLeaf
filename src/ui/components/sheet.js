@@ -67,6 +67,8 @@ export function openPlantSheet(plant, winterMode, vacationMode, handlers) {
         ` : ''}
       </div>
 
+      <button class="btn btn-secondary btn-full" id="sheet-correct-date">🗓️ Corriger une date</button>
+
       ${plant.notes ? `<div class="sheet-notes"><strong>Notes :</strong><p>${esc(plant.notes)}</p></div>` : ''}
     </div>
   `);
@@ -85,6 +87,11 @@ export function openPlantSheet(plant, winterMode, vacationMode, handlers) {
       handlers.onFert(plant.id);
     });
   }
+
+  overlay.querySelector('#sheet-correct-date').addEventListener('click', () => {
+    closeModal(overlay);
+    handlers.onCorrectDate?.(plant.id, care.mainAction || 'water');
+  });
 
   overlay.querySelector('#sheet-edit').addEventListener('click', () => {
     closeModal(overlay);

@@ -1,6 +1,6 @@
 # 🪴 BibiLeaf
 
-**Version : v1.1.0**
+**Version : v1.2.0**
 
 > Suivi doux et minimaliste de vos plantes d’intérieur.  
 > PWA mobile · Offline-first · Zéro backend · Zéro compte
@@ -33,6 +33,8 @@ BibiLeaf est une application web progressive (PWA) conçue pour suivre simplemen
 - Urgence combinée eau + engrais pour les cartes, le tri et le dashboard
 - Actions rapides arrosage/engrais annulables pendant quelques secondes
 - Dashboard avec compteurs par statut
+- Recherche globale accent-insensible sur nom, espèce, pièce et notes
+- Filtres compacts par pièce, générés automatiquement avec un chip "Sans pièce"
 
 ### Modes globaux
 
@@ -41,16 +43,24 @@ BibiLeaf est une application web progressive (PWA) conçue pour suivre simplemen
 |❄️ **Hiver**   |Multiplie toutes les fréquences × 1,5 (arrondi inférieur)|
 |🌴 **Vacances**|Suspend réellement le décompte, puis décale les dernières dates à la reprise|
 
-### Calendrier
+### Timeline
 
-- Vue sur 14 jours des prochains arrosages et engrais
-- Affichage des retards en rouge
+- Timeline mobile-first des retards, actions du jour et prochaines échéances sur 30 jours
+- Retards eau + engrais regroupés en haut sans limite stricte
+- Événements eau et engrais séparés, avec actions rapides et correction de date
+- Carte douce de pause quand le mode vacances suspend le planning
 
 ### Import / Export Excel
 
 - Export en `.xlsx` (une ligne = une plante)
 - Import depuis un fichier `.xlsx` compatible
 - Template vide téléchargeable
+
+### UX confort V1.2.0
+
+- Correction rapide de la dernière date d’arrosage ou d’engrais
+- Réglages restructurés en sections Modes, Notifications, Sauvegarde, Maintenance et Confidentialité locale
+- Animation de démarrage légère en HTML/SVG/CSS, sans nouvel asset binaire, avec respect de `prefers-reduced-motion`
 
 ### PWA & Offline
 
@@ -90,7 +100,7 @@ bibileaf/
         ├── form.js               ← Formulaire ajout / modification
         ├── sheet.js              ← Fiche détail d'une plante
         ├── modal.js              ← Modales, confirmations, toasts
-        └── calendar.js           ← Vue calendrier 14 jours
+        └── calendar.js           ← Timeline moderne eau + engrais
 ```
 
 -----
@@ -245,7 +255,7 @@ La permission n’est jamais demandée automatiquement : elle est déclenchée u
 - ✅ Pas d’historique complet des actions
 - ✅ Export / Import via un unique template Excel
 - ✅ Données utilisateur stockées localement sur l’appareil
-- ✅ Cache applicatif versionné (`bibileaf-v1.1.0`)
+- ✅ Cache applicatif versionné (`bibileaf-v1.2.0`)
 
 -----
 
