@@ -2,6 +2,7 @@
 
 import { CARE_STATUS, getPlantCareStatus } from '../../utils/calc.js';
 import { esc } from '../../utils/html.js';
+import { PLANT_PROFILES, HEALTH_STATUSES, normalizePlantProfile, normalizeHealthStatus } from '../../models/plant.js';
 
 function mainBadge(care) {
   if (care.mainStatus === 'today') {
@@ -20,6 +21,10 @@ function careLine(icon, item, suffix = '', className = '') {
 export function renderCard(plant, winterMode, vacationMode, handlers) {
   const care = getPlantCareStatus(plant, { winterMode, vacationMode });
   const cfg = CARE_STATUS[care.mainStatus] || CARE_STATUS.none;
+  const profile = PLANT_PROFILES[normalizePlantProfile(plant.profilPlante)];
+  const healthKey = normalizeHealthStatus(plant.healthStatus);
+  const health = HEALTH_STATUSES[healthKey];
+  const healthBadge = healthKey === 'unknown' ? '' : `<span class="card-health card-health--${esc(healthKey)}">${esc(health.shortLabel)}</span>`;
 
   const card = document.createElement('div');
   card.className = `plant-card ${cfg.cls}`;
@@ -39,7 +44,11 @@ export function renderCard(plant, winterMode, vacationMode, handlers) {
         <span class="urgency-badge ${cfg.cls}">${esc(mainBadge(care))}</span>
       </div>
       ${plant.espece ? `<div class="card-species">${esc(plant.espece)}</div>` : ''}
-      ${plant.piece ? `<div class="card-room">📍 ${esc(plant.piece)}</div>` : ''}
+      <div class="card-tags">
+        ${plant.piece ? `<span class="card-room">📍 ${esc(plant.piece)}</span>` : ''}
+        ${profile && normalizePlantProfile(plant.profilPlante) !== 'custom' ? `<span class="card-profile">🌿 ${esc(profile.label)}</span>` : ''}
+        ${healthBadge}
+      </div>
       <div class="card-next">
         ${careLine('💧', care.water, plant.volumeEau, 'card-water')}
         ${plant.engraisActif ? careLine('🌿', care.fertilizer, plant.quantiteEngrais, 'card-fert') : ''}

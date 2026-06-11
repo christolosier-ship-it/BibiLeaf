@@ -1,12 +1,15 @@
 // src/ui/components/form.js — Formulaire plante
 
-import { createModal, closeModal, toastMsg } from './modal.js';
+import { createModal, closeModal, toastMsg, confirmModal } from './modal.js';
 import { todayISO } from '../../utils/date.js';
 import { esc } from '../../utils/html.js';
+import { PLANT_PROFILES, HEALTH_STATUSES, applyPlantProfile, normalizePlantProfile, normalizeHealthStatus } from '../../models/plant.js';
 
 export function openPlantForm(plant, onSave) {
   const isEdit = !!plant.nom;
   const today = todayISO();
+  const currentProfile = normalizePlantProfile(plant.profilPlante);
+  const currentHealth = normalizeHealthStatus(plant.healthStatus);
 
   const overlay = createModal(`
     <div class="form-header">
@@ -29,6 +32,11 @@ export function openPlantForm(plant, onSave) {
       </label>
       <label>Espèce
         <input type="text" id="f-espece" value="${esc(plant.espece)}" placeholder="Ficus lyrata">
+      </label>
+      <label>Profil de plante
+        <select id="f-profilPlante">
+          ${Object.entries(PLANT_PROFILES).map(([key, profile]) => `<option value="${esc(key)}" ${currentProfile === key ? 'selected' : ''}>${esc(profile.label)}</option>`).join('')}
+        </select>
       </label>
       <label>Pièce
         <input type="text" id="f-piece" value="${esc(plant.piece)}" placeholder="Salon">
@@ -62,6 +70,13 @@ export function openPlantForm(plant, onSave) {
           <input type="date" id="f-dernierEngrais" value="${esc(plant.dernierEngrais || today)}">
         </label>
       </div>
+
+      <div class="form-section-title">🩺 État actuel</div>
+      <label>État santé
+        <select id="f-healthStatus">
+          ${Object.entries(HEALTH_STATUSES).map(([key, health]) => `<option value="${esc(key)}" ${currentHealth === key ? 'selected' : ''}>${esc(health.label)}</option>`).join('')}
+        </select>
+      </label>
 
       <div class="form-section-title">📝 Notes</div>
       <label>
@@ -120,9 +135,46 @@ export function openPlantForm(plant, onSave) {
     });
   }
 
-  // Toggle engrais
-  overlay.querySelector('#f-engraisActif').addEventListener('change', e => {
-    overlay.querySelector('#engrais-fields').style.display = e.target.checked ? '' : 'none';
+  const profileSelect = overlay.querySelector('#f-profilPlante');
+  const engraisToggle = overlay.querySelector('#f-engraisActif');
+
+  function syncEngraisFields() {
+    overlay.querySelector('#engrais-fields').style.display = engraisToggle.checked ? '' : 'none';
+  }
+
+  function fillCareFieldsFromProfile(profileKey) {
+    const next = applyPlantProfile({}, profileKey);
+    if (profileKey === 'custom') return;
+    overlay.querySelector('#f-freqEau').value = next.freqEau;
+    overlay.querySelector('#f-volumeEau').value = next.volumeEau || '';
+    engraisToggle.checked = !!next.engraisActif;
+    overlay.querySelector('#f-freqEngrais').value = next.freqEngrais || 30;
+    overlay.querySelector('#f-quantiteEngrais').value = next.quantiteEngrais || '';
+    syncEngraisFields();
+  }
+
+  profileSelect.addEventListener('change', async e => {
+    const selected = e.target.value;
+    if (selected === 'custom') return;
+    if (isEdit) {
+      const ok = await confirmModal('Appliquer ce profil ?<br>Les fréquences et quantités d’entretien seront remplacées.', 'Appliquer');
+      if (!ok) {
+        profileSelect.value = normalizePlantProfile(plant.profilPlante);
+        return;
+      }
+    }
+    fillCareFieldsFromProfile(selected);
+  });
+
+  ['#f-freqEau', '#f-volumeEau', '#f-freqEngrais', '#f-quantiteEngrais'].forEach(selector => {
+    overlay.querySelector(selector).addEventListener('input', () => {
+      if (profileSelect.value !== 'custom') profileSelect.value = 'custom';
+    });
+  });
+
+  engraisToggle.addEventListener('change', () => {
+    if (profileSelect.value !== 'custom') profileSelect.value = 'custom';
+    syncEngraisFields();
   });
 
   // Fermer
@@ -138,6 +190,8 @@ export function openPlantForm(plant, onSave) {
       nom,
       espece: overlay.querySelector('#f-espece').value.trim(),
       piece: overlay.querySelector('#f-piece').value.trim(),
+      profilPlante: normalizePlantProfile(overlay.querySelector('#f-profilPlante').value),
+      healthStatus: normalizeHealthStatus(overlay.querySelector('#f-healthStatus').value),
       photo: photoData,
       freqEau: parseInt(overlay.querySelector('#f-freqEau').value) || 7,
       volumeEau: overlay.querySelector('#f-volumeEau').value.trim(),

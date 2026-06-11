@@ -7,7 +7,7 @@ const COLS = [
   'id', 'nom', 'espece', 'piece', 'photoURL',
   'freqEau', 'volumeEau', 'derniereEau',
   'engraisActif', 'freqEngrais', 'quantiteEngrais', 'dernierEngrais',
-  'notes'
+  'notes', 'profilPlante', 'healthStatus'
 ];
 
 const COL_LABELS = {
@@ -23,7 +23,9 @@ const COL_LABELS = {
   freqEngrais: 'Fréquence engrais (jours)',
   quantiteEngrais: 'Quantité engrais',
   dernierEngrais: 'Dernier engrais (YYYY-MM-DD)',
-  notes: 'Notes'
+  notes: 'Notes',
+  profilPlante: 'Profil plante',
+  healthStatus: 'État santé'
 };
 
 /** Exporte la liste des plantes en fichier XLSX */
@@ -45,7 +47,9 @@ export function exportXLSX(plants) {
       p.freqEngrais,
       p.quantiteEngrais,
       p.dernierEngrais || '',
-      p.notes
+      p.notes,
+      p.profilPlante || 'custom',
+      p.healthStatus || 'unknown'
     ]);
   });
 
@@ -82,6 +86,8 @@ export function importXLSX(file) {
             quantiteEngrais: r[10] || '',
             dernierEngrais: normalizeImportedDate(r[11], XLSX),
             notes: r[12] || '',
+            profilPlante: r[13] || 'custom',
+            healthStatus: r[14] || 'unknown',
           });
         });
         resolve(plants);

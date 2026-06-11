@@ -25,10 +25,22 @@ export function createModal(content, opts = {}) {
 }
 
 export function closeModal(overlay) {
+  if (!overlay || !overlay.isConnected) return;
   overlay.classList.remove('modal-visible');
-  overlay.addEventListener('transitionend', () => overlay.remove(), { once: true });
+  let removed = false;
+  const remove = () => {
+    if (removed) return;
+    removed = true;
+    overlay.remove();
+  };
+  overlay.addEventListener('transitionend', remove, { once: true });
+  window.setTimeout(remove, 350);
 }
 
+/**
+ * Confirmation avec message HTML interne uniquement.
+ * Ne jamais passer de données utilisateur non échappées ici : utiliser esc() ou confirmTextModal().
+ */
 export function confirmModal(message, okLabel = 'Supprimer') {
   return new Promise(resolve => {
     const overlay = createModal(`
@@ -83,4 +95,28 @@ export function toastMsg(msg, type = 'success', opts = {}) {
   }, duration);
 
   return toast;
+}
+
+export function confirmTextModal(message, okLabel = 'Supprimer') {
+  return new Promise(resolve => {
+    const overlay = createModal('');
+    const box = overlay.querySelector('.modal-box');
+    const wrapper = document.createElement('div');
+    wrapper.className = 'modal-confirm';
+    const p = document.createElement('p');
+    p.textContent = message;
+    const buttons = document.createElement('div');
+    buttons.className = 'modal-btns';
+    const cancel = document.createElement('button');
+    cancel.className = 'btn btn-secondary';
+    cancel.textContent = 'Annuler';
+    const ok = document.createElement('button');
+    ok.className = 'btn btn-danger';
+    ok.textContent = okLabel;
+    buttons.append(cancel, ok);
+    wrapper.append(p, buttons);
+    box.replaceChildren(wrapper);
+    cancel.addEventListener('click', () => { closeModal(overlay); resolve(false); });
+    ok.addEventListener('click', () => { closeModal(overlay); resolve(true); });
+  });
 }

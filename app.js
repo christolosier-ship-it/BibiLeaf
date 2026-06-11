@@ -1,6 +1,6 @@
 // app.js — Orchestrateur principal BibiLeaf
 import { plants as db, settings } from './src/storage/idb.js';
-import { createPlant, duplicatePlant } from './src/models/plant.js';
+import { APP_VERSION, createPlant, duplicatePlant } from './src/models/plant.js';
 import { getPlantCareStatus, sortByUrgency, status } from './src/utils/calc.js';
 import { addDays, diffDays, parseDate, today, todayISO, toISO } from './src/utils/date.js';
 import { renderCard } from './src/ui/components/card.js';
@@ -17,6 +17,9 @@ import { esc } from './src/utils/html.js';
 let state = {
   plants: [],
   winterMode: false,
+  winterAutoEnabled: false,
+  winterAutoStart: '11-01',
+  winterAutoEnd: '03-31',
   vacationMode: false,
   currentScreen: 'home', // home | calendar | settings
   filter: 'all',         // all | late | today | soon | ok
@@ -27,13 +30,17 @@ let state = {
 
 let latestRegistration = null;
 let activeUndo = null;
+let searchRenderTimer = null;
 
 // ============================================================
 // Init
 // ============================================================
 async function init() {
   // Récupérer paramètres
-  state.winterMode  = (await settings.get('winterMode'))  || false;
+  state.winterMode = (await settings.get('winterMode')) || false;
+  state.winterAutoEnabled = (await settings.get('winterAutoEnabled')) || false;
+  state.winterAutoStart = (await settings.get('winterAutoStart')) || '11-01';
+  state.winterAutoEnd = (await settings.get('winterAutoEnd')) || '03-31';
   state.vacationMode = (await settings.get('vacationMode')) || false;
   state.vacationStartedAt = (await settings.get('vacationStartedAt')) || null;
   state.roomFilter = (await settings.get('roomFilter')) || 'all';
@@ -63,7 +70,10 @@ function renderAll() {
 function renderHeader() {
   const winter   = document.getElementById('mode-winter');
   const vacation = document.getElementById('mode-vacation');
-  winter.className   = `mode-pill mode-pill--winter ${state.winterMode ? 'mode-pill--active' : 'mode-pill--inactive'}`;
+  const winterActive = effectiveWinterMode();
+  winter.className = `mode-pill mode-pill--winter ${winterActive ? 'mode-pill--active' : 'mode-pill--inactive'}`;
+  winter.textContent = winterActive && !state.winterMode ? '❄️ Hiver auto' : '❄️ Hiver';
+  winter.title = winterActive && !state.winterMode ? 'Activé automatiquement' : 'Basculer le mode hiver manuel';
   vacation.className = `mode-pill mode-pill--vacation ${state.vacationMode ? 'mode-pill--active' : 'mode-pill--inactive'}`;
 }
 
@@ -82,17 +92,44 @@ function renderScreen() {
   }
 }
 
+
+function isWinterAutoActive(date = today(), start = '11-01', end = '03-31') {
+  const mmdd = `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  if (!/^\d{2}-\d{2}$/.test(start) || !/^\d{2}-\d{2}$/.test(end)) return false;
+  return start <= end ? (mmdd >= start && mmdd <= end) : (mmdd >= start || mmdd <= end);
+}
+
+function winterAutoActive() {
+  return !!state.winterAutoEnabled && isWinterAutoActive(today(), state.winterAutoStart, state.winterAutoEnd);
+}
+
+function effectiveWinterMode() {
+  return !!state.winterMode || winterAutoActive();
+}
+
+function formatMonthDay(value) {
+  const labels = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  const match = String(value || '').match(/^(\d{2})-(\d{2})$/);
+  if (!match) return value;
+  const day = Number(match[2]);
+  return `${day === 1 ? '1er' : day} ${labels[Number(match[1]) - 1] || ''}`;
+}
+
 // ============================================================
 // Écran Accueil
 // ============================================================
 function renderHome(container) {
-  const sorted = sortByUrgency(state.plants, state.winterMode, state.vacationMode);
-  const careById = new Map(sorted.map(p => [p.id, getPlantCareStatus(p, { winterMode: state.winterMode, vacationMode: state.vacationMode })]));
+  const winterActive = effectiveWinterMode();
+  const sorted = sortByUrgency(state.plants, winterActive, state.vacationMode);
+  const careById = new Map(sorted.map(p => [p.id, getPlantCareStatus(p, { winterMode: winterActive, vacationMode: state.vacationMode })]));
 
   const counts = { late: 0, today: 0, soon: 0, ok: 0, paused: 0 };
+  const healthCounts = { watch: 0, bad: 0 };
   sorted.forEach(p => {
     const mainStatus = careById.get(p.id).mainStatus;
     if (mainStatus in counts) counts[mainStatus] += 1;
+    if (p.healthStatus === 'watch') healthCounts.watch += 1;
+    if (p.healthStatus === 'bad') healthCounts.bad += 1;
   });
 
   const roomOptions = buildRoomOptions(sorted);
@@ -140,6 +177,8 @@ function renderHome(container) {
       </div>
     </div>
 
+    ${(healthCounts.watch || healthCounts.bad) ? `<div class="health-summary">${healthCounts.watch ? `<span>😐 ${healthCounts.watch} à surveiller</span>` : ''}${healthCounts.bad ? `<span>🥀 ${healthCounts.bad} en difficulté</span>` : ''}</div>` : ''}
+
     <section class="explorer-panel" aria-label="Explorer mes plantes">
       <div class="explorer-title">Explorer mes plantes</div>
       <div class="search-box">
@@ -183,12 +222,15 @@ function renderHome(container) {
   searchInput.addEventListener('input', e => {
     const cursor = e.target.selectionStart ?? e.target.value.length;
     state.searchQuery = e.target.value;
-    renderAll();
-    requestAnimationFrame(() => {
+    window.clearTimeout(searchRenderTimer);
+    searchRenderTimer = window.setTimeout(() => {
+      renderAll();
+      requestAnimationFrame(() => {
       const nextInput = document.getElementById('plant-search');
       nextInput?.focus();
-      nextInput?.setSelectionRange(cursor, cursor);
-    });
+        nextInput?.setSelectionRange(cursor, cursor);
+      });
+    }, 140);
   });
   container.querySelector('#clear-search').addEventListener('click', () => {
     state.searchQuery = '';
@@ -197,12 +239,12 @@ function renderHome(container) {
 
   const list = container.querySelector('#plant-list');
   const handlers = {
-    onOpen:  id => { const p = getPlant(id); openPlantSheet(p, state.winterMode, state.vacationMode, sheetHandlers()); },
+    onOpen:  id => { const p = getPlant(id); openPlantSheet(p, effectiveWinterMode(), state.vacationMode, sheetHandlers()); },
     onWater: id => markWater(id),
     onFert:  id => markFert(id),
     onCorrectDate: (id, action = 'water') => openCorrectDateModal(id, action),
   };
-  filtered.forEach(p => list.appendChild(renderCard(p, state.winterMode, state.vacationMode, handlers)));
+  filtered.forEach(p => list.appendChild(renderCard(p, winterActive, state.vacationMode, handlers)));
 }
 function emptyState() {
   return `<div class="empty-state">
@@ -282,7 +324,7 @@ function sheetHandlers() {
 // ============================================================
 function renderCalendarScreen(container) {
   container.innerHTML = `<div class="screen-title">🌿 Timeline</div><div id="cal-container"></div>`;
-  renderCalendar(state.plants, state.winterMode, container.querySelector('#cal-container'), state.vacationMode, {
+  renderCalendar(state.plants, effectiveWinterMode(), container.querySelector('#cal-container'), state.vacationMode, {
     onWater: id => markWater(id),
     onFert: id => markFert(id),
     onCorrectDate: (id, action = 'water') => openCorrectDateModal(id, action),
@@ -296,17 +338,34 @@ function renderSettings(container) {
   container.innerHTML = `
     <div class="screen-title">⚙️ Réglages</div>
 
+    <div class="settings-layout">
     <div class="settings-section settings-card">
       <div class="settings-title">A. Modes</div>
       <div class="settings-row">
         <div class="settings-row-info">
-          <div class="settings-row-label">❄️ Mode hiver</div>
+          <div class="settings-row-label">❄️ Mode hiver manuel</div>
           <div class="settings-row-sub">Le mode hiver espace les arrosages.</div>
         </div>
         <label class="label-toggle" style="margin:0">
           <input type="checkbox" id="toggle-winter" ${state.winterMode ? 'checked' : ''}>
           <span class="toggle-slider"></span>
         </label>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-info">
+          <div class="settings-row-label">❄️ Mode hiver automatique</div>
+          <div class="settings-row-sub">${winterAutoActive() ? 'Activé automatiquement' : 'Inactif actuellement'} · du ${esc(formatMonthDay(state.winterAutoStart))} au ${esc(formatMonthDay(state.winterAutoEnd))}.</div>
+        </div>
+        <label class="label-toggle" style="margin:0">
+          <input type="checkbox" id="toggle-winter-auto" ${state.winterAutoEnabled ? 'checked' : ''}>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-info">
+          <div class="settings-row-label">État hiver</div>
+          <div class="settings-row-sub">${effectiveWinterMode() ? (state.winterMode ? 'Mode hiver actif manuellement.' : 'Mode hiver actif automatiquement.') : 'Mode hiver inactif.'}</div>
+        </div>
       </div>
       <div class="settings-row">
         <div class="settings-row-info">
@@ -331,8 +390,11 @@ function renderSettings(container) {
       <button class="btn-settings-action" id="btn-export">📤 Exporter en Excel</button>
       <button class="btn-settings-action" id="btn-import">📥 Importer depuis Excel</button>
       <button class="btn-settings-action" id="btn-template">📋 Télécharger le modèle Excel</button>
-      <div class="settings-note">L’Excel ne contient pas les photos.</div>
+      <button class="btn-settings-action" id="btn-export-json">📦 Exporter sauvegarde JSON</button>
+      <button class="btn-settings-action" id="btn-import-json">📦 Importer sauvegarde JSON</button>
+      <div class="settings-note">Excel et JSON n’incluent pas les photos. Les photos restent uniquement sur cet appareil.</div>
       <input type="file" id="import-file" accept=".xlsx" style="display:none">
+      <input type="file" id="import-json-file" accept=".json,application/json" style="display:none">
     </div>
 
     <div class="settings-section settings-card">
@@ -345,16 +407,24 @@ function renderSettings(container) {
     <div class="settings-section settings-card">
       <div class="settings-title">E. Confidentialité locale / À propos</div>
       <div class="settings-about">
-        <strong>BibiLeaf V1.2.0</strong><br>
+        <strong>BibiLeaf V1.3.0</strong><br>
         Tes données restent stockées localement sur cet appareil.<br>
         Aucun compte, aucun cloud, aucune publicité.
       </div>
+    </div>
     </div>
   `;
 
   container.querySelector('#toggle-winter').addEventListener('change', async e => {
     state.winterMode = e.target.checked;
     await settings.set('winterMode', state.winterMode);
+    renderAll();
+  });
+
+  container.querySelector('#toggle-winter-auto').addEventListener('change', async e => {
+    state.winterAutoEnabled = e.target.checked;
+    await settings.set('winterAutoEnabled', state.winterAutoEnabled);
+    toastMsg(state.winterAutoEnabled ? '❄️ Hiver automatique activé.' : '❄️ Hiver automatique désactivé.');
     renderAll();
   });
 
@@ -389,6 +459,15 @@ function renderSettings(container) {
 
   container.querySelector('#btn-template').addEventListener('click', () => downloadTemplate());
 
+  container.querySelector('#btn-export-json').addEventListener('click', () => exportJSONBackup());
+  container.querySelector('#btn-import-json').addEventListener('click', () => container.querySelector('#import-json-file').click());
+  container.querySelector('#import-json-file').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    await importJSONBackup(file);
+    e.target.value = '';
+  });
+
   container.querySelector('#btn-notif').addEventListener('click', () => {
     if (!('Notification' in window)) {
       toastMsg('Notifications non disponibles sur cet appareil ou ce navigateur.', 'error');
@@ -419,6 +498,80 @@ function renderSettings(container) {
     toastMsg('Toutes les plantes supprimées');
     renderAll();
   });
+}
+
+
+function plantWithoutPhoto(plant) {
+  const clean = createPlant({ ...plant, photo: null });
+  const { photo, ...withoutPhoto } = clean;
+  return withoutPhoto;
+}
+
+function exportJSONBackup() {
+  const payload = {
+    type: 'bibileaf-backup',
+    backupVersion: 1,
+    appVersion: APP_VERSION,
+    exportedAt: new Date().toISOString(),
+    containsPhotos: false,
+    settings: {
+      winterMode: state.winterMode,
+      winterAutoEnabled: state.winterAutoEnabled,
+      winterAutoStart: state.winterAutoStart,
+      winterAutoEnd: state.winterAutoEnd,
+      vacationMode: state.vacationMode,
+      vacationStartedAt: state.vacationStartedAt,
+      roomFilter: state.roomFilter,
+    },
+    plants: state.plants.map(plantWithoutPhoto),
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `bibileaf-backup-v${APP_VERSION}-${todayISO()}.json`;
+  document.body.appendChild(a);
+  const url = a.href;
+  a.click();
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  toastMsg('Sauvegarde JSON téléchargée.');
+}
+
+async function importJSONBackup(file) {
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    if (parsed?.type !== 'bibileaf-backup' || !Array.isArray(parsed.plants)) throw new Error('invalid');
+    const ok = await confirmModal('Importer cette sauvegarde ?<br>Les plantes et réglages actuels seront remplacés. Les photos ne seront pas restaurées.', 'Importer');
+    if (!ok) return;
+
+    const previousPhotos = new Map(state.plants.filter(p => p.photo).map(p => [p.id, p.photo]));
+    for (const plant of state.plants) await db.delete(plant.id);
+    for (const importedPlant of parsed.plants) {
+      const safe = createPlant({ ...importedPlant, photo: previousPhotos.get(importedPlant.id) || null });
+      await db.put(safe);
+    }
+
+    const backupSettings = parsed.settings || {};
+    const supportedSettings = ['winterMode', 'winterAutoEnabled', 'winterAutoStart', 'winterAutoEnd', 'vacationMode', 'vacationStartedAt', 'roomFilter'];
+    for (const key of supportedSettings) {
+      if (Object.prototype.hasOwnProperty.call(backupSettings, key)) await settings.set(key, backupSettings[key]);
+    }
+
+    state.winterMode = !!backupSettings.winterMode;
+    state.winterAutoEnabled = backupSettings.winterAutoEnabled ?? state.winterAutoEnabled;
+    state.winterAutoStart = backupSettings.winterAutoStart || '11-01';
+    state.winterAutoEnd = backupSettings.winterAutoEnd || '03-31';
+    state.vacationMode = !!backupSettings.vacationMode;
+    state.vacationStartedAt = backupSettings.vacationStartedAt || null;
+    state.roomFilter = backupSettings.roomFilter || 'all';
+    state.plants = await db.getAll();
+    toastMsg('Sauvegarde JSON importée. Photos non incluses.');
+    renderAll();
+  } catch (error) {
+    console.warn('Import JSON impossible', error);
+    toastMsg('Fichier de sauvegarde invalide.', 'error');
+  }
 }
 
 // ============================================================
@@ -694,11 +847,16 @@ function scheduleNotifications() {
   if (!('Notification' in window) || Notification.permission !== 'granted' || state.vacationMode) return;
   // Pas de vrai scheduling possible en Safari sans push server
   // On programme une notification immédiate pour les retards
-  const late = state.plants.filter(p => status(p, state.winterMode, false) === 'late');
+  const late = state.plants.filter(p => status(p, effectiveWinterMode(), false) === 'late');
   if (late.length > 0) {
-    new Notification('BibiLeaf 🪴', {
-      body: `${late.length} plante(s) en attente d'arrosage !`,
-      icon: './icons/icon-192.png',
+    settings.get('lastLateNotificationDate').then(lastDate => {
+      const currentDate = todayISO();
+      if (lastDate === currentDate) return;
+      new Notification('BibiLeaf 🪴', {
+        body: `${late.length} plante(s) en attente d'arrosage !`,
+        icon: './icons/icon-192.png',
+      });
+      settings.set('lastLateNotificationDate', currentDate);
     });
   }
 }

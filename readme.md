@@ -1,6 +1,6 @@
 # 🪴 BibiLeaf
 
-**Version : v1.2.0**
+**Version : v1.3.0**
 
 > Suivi doux et minimaliste de vos plantes d’intérieur.  
 > PWA mobile · Offline-first · Zéro backend · Zéro compte
@@ -21,7 +21,8 @@ BibiLeaf est une application web progressive (PWA) conçue pour suivre simplemen
 
 - Ajouter, modifier, dupliquer et supprimer une plante
 - Une photo par plante (prise directe ou galerie, compressée avant stockage)
-- Champs : nom, espèce, pièce, notes
+- Champs : nom, espèce, pièce, profil de plante, état santé rapide, notes
+- Profils simples pour préremplir arrosage et engrais, toujours modifiables
 - Suivi de l’arrosage (fréquence, volume, dernière date)
 - Suivi de l’engrais optionnel (fréquence, quantité, dernière date)
 
@@ -40,7 +41,8 @@ BibiLeaf est une application web progressive (PWA) conçue pour suivre simplemen
 
 |Mode          |Effet                                                    |
 |--------------|---------------------------------------------------------|
-|❄️ **Hiver**   |Multiplie toutes les fréquences × 1,5 (arrondi inférieur)|
+|❄️ **Hiver manuel**|Multiplie toutes les fréquences × 1,5 (arrondi inférieur)|
+|❄️ **Hiver automatique**|Peut s’activer automatiquement du 1er novembre au 31 mars|
 |🌴 **Vacances**|Suspend réellement le décompte, puis décale les dernières dates à la reprise|
 
 ### Timeline
@@ -55,8 +57,9 @@ BibiLeaf est une application web progressive (PWA) conçue pour suivre simplemen
 - Export en `.xlsx` (une ligne = une plante)
 - Import depuis un fichier `.xlsx` compatible
 - Template vide téléchargeable
+- Sauvegarde JSON complète des données texte et réglages, sans photos
 
-### UX confort V1.2.0
+### UX confort V1.3.0
 
 - Correction rapide de la dernière date d’arrosage ou d’engrais
 - Réglages restructurés en sections Modes, Notifications, Sauvegarde, Maintenance et Confidentialité locale
@@ -115,6 +118,8 @@ Chaque plante est un objet JSON stocké dans IndexedDB :
   "nom": "Mon Ficus",
   "espece": "Ficus lyrata",
   "piece": "Salon",
+  "profilPlante": "tropical",
+  "healthStatus": "good",
   "photo": "data:image/jpeg;base64,...",
   "freqEau": 7,
   "volumeEau": "200ml",
@@ -177,9 +182,27 @@ Le fichier `.xlsx` comporte une feuille `BibiLeaf` avec ces colonnes dans l’or
 |Quantité engrais         |Ex : `5ml`                                                 |
 |Dernier engrais          |Format `YYYY-MM-DD`                                        |
 |Notes                    |Texte libre                                                |
+|Profil plante            |Colonne V1.3.0 optionnelle en fin de fichier               |
+|État santé               |Colonne V1.3.0 optionnelle en fin de fichier               |
 
 
 > ⚠️ Les photos ne sont pas exportées. Elles restent stockées localement dans IndexedDB.
+
+-----
+
+## 📦 Sauvegarde JSON V1.3.0
+
+La sauvegarde JSON contient :
+
+- la version de sauvegarde ;
+- la date d’export ;
+- la version de l’app ;
+- les plantes avec leurs champs texte et paramètres d’entretien ;
+- les réglages compatibles (hiver manuel/auto, vacances, filtre pièce).
+
+Elle ne contient **jamais** les photos : aucun champ `photo` base64 n’est exporté. À l’import, les photos locales existantes peuvent être conservées si les identifiants de plantes correspondent, mais elles ne sont pas restaurées depuis le fichier.
+
+BibiLeaf reste sans compte, sans cloud, sans backend et sans publicité : toutes les données sont locales.
 
 -----
 
@@ -220,7 +243,7 @@ BibiLeaf est un site statique. Aucun serveur, aucune base de données distante.
 
 Les notifications sont locales (sans serveur push) et limitées par le navigateur/PWA. Elles peuvent être déclenchées au chargement de l’application si des plantes sont en retard et si l’utilisateur les a déjà autorisées.
 
-> **Note Safari / iOS :** les notifications push en arrière-plan ne sont pas supportées avant iOS 16.4. L’application affiche les alertes à chaque ouverture.
+> **Note Safari / iOS :** les notifications push en arrière-plan ne sont pas supportées avant iOS 16.4. L’application limite les alertes de retard à une fois par jour maximum.
 
 Pour activer les notifications :
 
@@ -255,7 +278,7 @@ La permission n’est jamais demandée automatiquement : elle est déclenchée u
 - ✅ Pas d’historique complet des actions
 - ✅ Export / Import via un unique template Excel
 - ✅ Données utilisateur stockées localement sur l’appareil
-- ✅ Cache applicatif versionné (`bibileaf-v1.2.0`)
+- ✅ Cache applicatif versionné (`bibileaf-v1.3.0`)
 
 -----
 

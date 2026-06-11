@@ -7,7 +7,7 @@
   "display": "standalone",
   "background_color": "#f0f7ee",
   "theme_color": "#5a9a6f",
-  "orientation": "portrait",
+  "orientation": "any",
   "icons": [
     {
       "src": "icons/icon-192.png",
@@ -27,5 +27,5 @@
     "utilities"
   ],
   "lang": "fr",
-  "version": "1.2.0"
+  "version": "1.3.0"
 }

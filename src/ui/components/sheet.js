@@ -5,10 +5,13 @@ import { openPlantForm } from './form.js';
 import { CARE_STATUS, getPlantCareStatus } from '../../utils/calc.js';
 import { formatDate } from '../../utils/date.js';
 import { esc } from '../../utils/html.js';
+import { PLANT_PROFILES, HEALTH_STATUSES, normalizePlantProfile, normalizeHealthStatus } from '../../models/plant.js';
 
 export function openPlantSheet(plant, winterMode, vacationMode, handlers) {
   const care = getPlantCareStatus(plant, { winterMode, vacationMode });
   const cfg = CARE_STATUS[care.mainStatus] || CARE_STATUS.none;
+  const profile = PLANT_PROFILES[normalizePlantProfile(plant.profilPlante)];
+  const health = HEALTH_STATUSES[normalizeHealthStatus(plant.healthStatus)];
 
   const urgencyColor = {
     late: '#ff6b6b',
@@ -37,6 +40,8 @@ export function openPlantSheet(plant, winterMode, vacationMode, handlers) {
 
       ${plant.espece ? `<div class="sheet-meta">🌿 ${esc(plant.espece)}</div>` : ''}
       ${plant.piece ? `<div class="sheet-meta">📍 ${esc(plant.piece)}</div>` : ''}
+      <div class="sheet-meta">🌿 Profil : ${esc(profile.label)}</div>
+      <div class="sheet-meta">🩺 Santé : ${esc(health.label)}</div>
       <div class="sheet-meta">${cfg.emoji} ${esc(cfg.label)}</div>
 
       <div class="sheet-cards">
@@ -46,7 +51,7 @@ export function openPlantSheet(plant, winterMode, vacationMode, handlers) {
             <div class="sheet-card-label">Arrosage</div>
             <div class="sheet-card-value">${esc(care.water.label)}</div>
             <div class="sheet-card-sub">Prochain : ${formatDate(care.water.dueDate)}</div>
-            <div class="sheet-card-sub">Toutes les ${esc(plant.freqEau)} j${winterMode ? ' (❄️ hiver)' : ''}${plant.volumeEau ? ' · ' + esc(plant.volumeEau) : ''}</div>
+            <div class="sheet-card-sub">Toutes les ${esc(plant.freqEau)} j${winterMode ? ' (❄️ hiver effectif)' : ''}${plant.volumeEau ? ' · ' + esc(plant.volumeEau) : ''}</div>
             <div class="sheet-card-sub">Dernier : ${formatDate(plant.derniereEau)}</div>
           </div>
           <button class="btn btn-primary sheet-action-btn" id="sheet-water">Arroser</button>
