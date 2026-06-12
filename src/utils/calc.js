@@ -48,14 +48,14 @@ function buildStatus(task, dueDate, diffDaysValue, status, labelText) {
   return {
     taskId: task.id || task.type,
     type: task.type,
-    label: task.label,
+    taskLabel: task.label,
     iconName: task.iconName,
     enabled: !!task.enabled,
     dueDate,
     diffDays: diffDaysValue,
     status,
+    statusLabel: labelText,
     labelText,
-    label: labelText,
     sortScore,
     quantity: task.quantity || '',
     notes: task.notes || '',
@@ -68,7 +68,10 @@ export function careLabel(status, diff, type = '') {
   if (status === 'setup') return 'À configurer';
   if (status === 'disabled') return 'Désactivé';
   if (status === 'late') {
-    if (type === 'repotting') return `Rempotage conseillé · ${Math.abs(diff)} j`;
+    if (type === 'repotting') {
+      const days = Math.abs(diff);
+      return days > 0 ? `Rempotage conseillé depuis ${days} j` : 'Rempotage conseillé';
+    }
     return `Retard de ${Math.abs(diff)} j`;
   }
   if (status === 'today') return "Aujourd’hui";
@@ -142,12 +145,13 @@ function toEvent(plant, task) {
     room: plant.piece || '',
     taskId: task.taskId,
     taskType: task.type,
-    taskLabel: task.labelText === 'À configurer' ? (CARE_TASK_DEFS[task.type]?.label || task.type) : (CARE_TASK_DEFS[task.type]?.label || task.type),
+    taskLabel: task.taskLabel || CARE_TASK_DEFS[task.type]?.label || task.type,
     iconName: task.iconName,
     dueDate: task.dueDate,
     diffDays: task.diffDays,
     status: task.status,
-    labelText: task.labelText,
+    statusLabel: task.statusLabel || task.labelText,
+    labelText: task.statusLabel || task.labelText,
     quantity: task.quantity,
     healthStatus: plant.healthStatus || 'unknown',
   };

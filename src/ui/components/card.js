@@ -14,7 +14,7 @@ function taskLine(task) {
   if (!task?.enabled || task.status === 'disabled') return '';
   const label = CARE_TASK_DEFS[task.type]?.label || task.type;
   const extra = task.quantity ? ` · ${esc(task.quantity)}` : '';
-  return `<span class="card-task card-task--${esc(task.status)}">${icon(task.iconName, { size: 'small' })}<span>${esc(label)} · ${esc(task.labelText || task.label)}${extra}</span></span>`;
+  return `<span class="card-task card-task--${esc(task.status)}">${icon(task.iconName, { size: 'small' })}<span>${esc(label)} · ${esc(task.statusLabel || task.labelText || task.taskLabel)}${extra}</span></span>`;
 }
 
 export function renderCard(plant, winterMode, vacationMode, handlers) {

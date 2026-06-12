@@ -29,6 +29,17 @@ let state = {
   vacationStartedAt: null,
 };
 
+const DEFAULT_SETTINGS = {
+  winterMode: false,
+  winterAutoEnabled: false,
+  winterAutoStart: '11-01',
+  winterAutoEnd: '03-31',
+  vacationMode: false,
+  vacationStartedAt: null,
+  roomFilter: 'all',
+  ignoredSuggestions: [],
+};
+
 let latestRegistration = null;
 let activeUndo = null;
 let searchRenderTimer = null;
@@ -69,8 +80,10 @@ async function init() {
   state.vacationMode = (await settings.get('vacationMode')) || false;
   state.vacationStartedAt = (await settings.get('vacationStartedAt')) || null;
   state.roomFilter = (await settings.get('roomFilter')) || 'all';
+  const ignoredSuggestions = await settings.get('ignoredSuggestions');
+  state.ignoredSuggestions = Array.isArray(ignoredSuggestions) ? ignoredSuggestions : [];
 
-  // Charger les plantes et migrer V1.3.0 -> V2.0.0 sans toucher aux photos
+  // Charger les plantes et migrer V1.3.0 -> V2.0.1 sans toucher aux photos
   await migrateExistingData();
   state.plants = await db.getAll();
 
@@ -190,6 +203,8 @@ function renderToday(container) {
     ${renderSuggestionCard()}
   `;
 
+  bindSuggestionActions(container);
+
   container.querySelectorAll('[data-today-task]').forEach(button => {
     button.addEventListener('click', () => markTaskDone(button.dataset.plantId, button.dataset.todayTask));
   });
@@ -209,7 +224,7 @@ function renderTodaySection(key, title, items) {
 
 function renderTodayItem(event) {
   const def = CARE_TASK_DEFS[event.taskType] || { label: event.taskLabel, actionLabel: 'Fait' };
-  const info = event.status === 'setup' ? 'Dernière date à renseigner' : (event.diffDays < 0 ? `Retard de ${Math.abs(event.diffDays)} j` : event.labelText);
+  const info = event.status === 'setup' ? 'Dernière date à renseigner' : event.labelText;
   return `<article class="today-item today-item--${esc(event.status)}">
     <div class="today-item-icon">${icon(event.iconName, { size: 'badge' })}</div>
     <div class="today-item-main">
@@ -226,12 +241,34 @@ function renderTodayItem(event) {
 
 function renderSuggestionCard() {
   const suggestions = [];
-  const watchPlant = state.plants.find(p => p.healthStatus === 'bad' || (Array.isArray(p.healthHistory) && p.healthHistory.filter(h => h.status === 'bad').length >= 2));
-  if (watchPlant) suggestions.push(`Cette plante est souvent en difficulté : ${esc(watchPlant.nom || 'plante')}. Tu peux vérifier sa fréquence d’arrosage.`);
-  const setupPlant = state.plants.find(p => getPlantCareStatus(p, { winterMode: effectiveWinterMode(), vacationMode: state.vacationMode }).setupTasks.length);
-  if (setupPlant) suggestions.push(`${esc(setupPlant.nom || 'Une plante')} a besoin d’une dernière date pour entrer dans la routine.`);
-  if (!suggestions.length) return '';
-  return `<aside class="suggestion-card">${icon('plant', { size: 'badge' })}<div><strong>Suggestion BibiLeaf</strong><p>${suggestions.slice(0, 1).join('</p><p>')}</p><button class="btn btn-secondary" onclick="this.closest('.suggestion-card').remove()">Plus tard</button></div></aside>`;
+  const ignored = new Set(state.ignoredSuggestions || []);
+  const watchPlant = state.plants.find(p => !ignored.has(`health:${p.id}`) && (p.healthStatus === 'bad' || (Array.isArray(p.healthHistory) && p.healthHistory.filter(h => h.status === 'bad').length >= 2)));
+  if (watchPlant) suggestions.push({ key: `health:${watchPlant.id}`, text: `Cette plante est souvent en difficulté : ${esc(watchPlant.nom || 'plante')}. Tu peux vérifier sa fréquence d’arrosage.` });
+  const setupPlant = state.plants.find(p => !ignored.has(`setup:${p.id}`) && getPlantCareStatus(p, { winterMode: effectiveWinterMode(), vacationMode: state.vacationMode }).setupTasks.length);
+  if (setupPlant) suggestions.push({ key: `setup:${setupPlant.id}`, text: `${esc(setupPlant.nom || 'Une plante')} a besoin d’une dernière date pour entrer dans la routine.` });
+  const suggestion = suggestions[0];
+  if (!suggestion) return '';
+  return `<aside class="suggestion-card" data-suggestion-key="${esc(suggestion.key)}">${icon('plant', { size: 'badge' })}<div><strong>Suggestion BibiLeaf</strong><p>${suggestion.text}</p><div class="suggestion-actions"><button class="btn btn-secondary" data-suggestion-later>Plus tard</button><button class="btn btn-secondary" data-suggestion-ignore>Ignorer</button><button class="btn btn-primary" data-suggestion-apply>Appliquer</button></div></div></aside>`;
+}
+
+function bindSuggestionActions(container) {
+  const card = container.querySelector('[data-suggestion-key]');
+  if (!card) return;
+  card.querySelector('[data-suggestion-later]')?.addEventListener('click', () => card.remove());
+  card.querySelector('[data-suggestion-ignore]')?.addEventListener('click', async () => {
+    const key = card.dataset.suggestionKey;
+    state.ignoredSuggestions = [...new Set([...(state.ignoredSuggestions || []), key])];
+    await settings.set('ignoredSuggestions', state.ignoredSuggestions);
+    card.remove();
+    toastMsg('Suggestion ignorée.');
+  });
+  card.querySelector('[data-suggestion-apply]')?.addEventListener('click', async () => {
+    const ok = await confirmModal('Ouvrir la plante concernée pour vérifier la suggestion ?<br>Aucune modification ne sera appliquée sans validation.', 'Ouvrir');
+    if (!ok) return;
+    const [, plantId] = String(card.dataset.suggestionKey || '').split(':');
+    const plant = getPlant(plantId);
+    if (plant) openPlantSheet(plant, effectiveWinterMode(), state.vacationMode, sheetHandlers());
+  });
 }
 
 // ============================================================
@@ -268,7 +305,7 @@ function renderHome(container) {
   }
 
   const vacationNotice = state.vacationMode
-    ? `<div class="settings-section" style="margin-bottom:14px"><strong>🌴 Pause vacances active</strong><br><span style="color:var(--text-soft);font-size:.85rem">Le décompte est suspendu depuis ${esc(state.vacationStartedAt || 'aujourd’hui')}.</span></div>`
+    ? `<div class="settings-section" style="margin-bottom:14px"><strong>${icon('vacation', { size: 'small' })} Pause vacances active</strong><br><span style="color:var(--text-soft);font-size:.85rem">Le décompte est suspendu depuis ${esc(state.vacationStartedAt || 'aujourd’hui')}.</span></div>`
     : '';
 
   const emptyExplorerMessage = state.roomFilter !== 'all' && !normalizedQuery && state.filter === 'all'
@@ -280,28 +317,28 @@ function renderHome(container) {
     <div class="dash-summary">
       <div class="dash-stat dash-stat--red">
         <div class="dash-stat-val">${counts.late}</div>
-        <div class="dash-stat-label">🚨 Retard</div>
+        <div class="dash-stat-label">${icon('late', { size: 'small' })} Retard</div>
       </div>
       <div class="dash-stat dash-stat--orange">
         <div class="dash-stat-val">${counts.today}</div>
-        <div class="dash-stat-label">💧 Aujourd'hui</div>
+        <div class="dash-stat-label">${icon('today', { size: 'small' })} Aujourd'hui</div>
       </div>
       <div class="dash-stat dash-stat--soon">
         <div class="dash-stat-val">${counts.soon}</div>
-        <div class="dash-stat-label">🟡 Bientôt</div>
+        <div class="dash-stat-label">${icon('soon', { size: 'small' })} Bientôt</div>
       </div>
       <div class="dash-stat dash-stat--green">
         <div class="dash-stat-val">${state.vacationMode ? counts.paused : counts.ok}</div>
-        <div class="dash-stat-label">${state.vacationMode ? '🌴 Pause' : '✅ OK'}</div>
+        <div class="dash-stat-label">${state.vacationMode ? icon('vacation', { size: 'small' }) + ' Pause' : icon('ok', { size: 'small' }) + ' OK'}</div>
       </div>
     </div>
 
-    ${(healthCounts.watch || healthCounts.bad) ? `<div class="health-summary">${healthCounts.watch ? `<span>😐 ${healthCounts.watch} à surveiller</span>` : ''}${healthCounts.bad ? `<span>🥀 ${healthCounts.bad} en difficulté</span>` : ''}</div>` : ''}
+    ${(healthCounts.watch || healthCounts.bad) ? `<div class="health-summary">${healthCounts.watch ? `<span>${icon('healthCheck', { size: 'small' })} ${healthCounts.watch} à surveiller</span>` : ''}${healthCounts.bad ? `<span>${icon('late', { size: 'small' })} ${healthCounts.bad} en difficulté</span>` : ''}</div>` : ''}
 
     <section class="explorer-panel" aria-label="Explorer mes plantes">
       <div class="explorer-title">Explorer mes plantes</div>
       <div class="search-box">
-        <span aria-hidden="true">🔎</span>
+        <span aria-hidden="true">${icon('search', { size: 'small' })}</span>
         <input id="plant-search" type="search" placeholder="Rechercher une plante..." value="${esc(state.searchQuery)}" autocomplete="off">
         <button id="clear-search" class="search-clear" aria-label="Effacer la recherche" ${state.searchQuery ? '' : 'hidden'}>×</button>
       </div>
@@ -312,10 +349,10 @@ function renderHome(container) {
       </div>
       <div class="filter-bar" id="filter-bar" aria-label="Filtrer par urgence">
         <button class="filter-chip ${state.filter === 'all' ? 'filter-chip--active' : ''}" data-filter="all">Toutes (${sorted.length})</button>
-        <button class="filter-chip ${state.filter === 'late' ? 'filter-chip--active' : ''}" data-filter="late">🚨 Retard (${counts.late})</button>
-        <button class="filter-chip ${state.filter === 'today' ? 'filter-chip--active' : ''}" data-filter="today">💧 Aujourd'hui (${counts.today})</button>
-        <button class="filter-chip ${state.filter === 'soon' ? 'filter-chip--active' : ''}" data-filter="soon">🟡 Bientôt (${counts.soon})</button>
-        <button class="filter-chip ${state.filter === 'ok' ? 'filter-chip--active' : ''}" data-filter="ok">✅ OK (${counts.ok})</button>
+        <button class="filter-chip ${state.filter === 'late' ? 'filter-chip--active' : ''}" data-filter="late">${icon('late', { size: 'small' })} Retard (${counts.late})</button>
+        <button class="filter-chip ${state.filter === 'today' ? 'filter-chip--active' : ''}" data-filter="today">${icon('today', { size: 'small' })} Aujourd'hui (${counts.today})</button>
+        <button class="filter-chip ${state.filter === 'soon' ? 'filter-chip--active' : ''}" data-filter="soon">${icon('soon', { size: 'small' })} Bientôt (${counts.soon})</button>
+        <button class="filter-chip ${state.filter === 'ok' ? 'filter-chip--active' : ''}" data-filter="ok">${icon('ok', { size: 'small' })} OK (${counts.ok})</button>
       </div>
     </section>
 
@@ -323,6 +360,8 @@ function renderHome(container) {
     ${state.plants.length === 0 ? emptyState() : ''}
     ${state.plants.length > 0 && filtered.length === 0 ? softEmptyState(emptyExplorerMessage) : ''}
   `;
+
+  bindSuggestionActions(container);
 
   container.querySelector('#filter-bar').addEventListener('click', e => {
     const chip = e.target.closest('[data-filter]');
@@ -368,7 +407,7 @@ function renderHome(container) {
 }
 function emptyState() {
   return `<div class="empty-state">
-    <div class="empty-emoji">🪴</div>
+    <div class="empty-emoji">${icon('plant', { size: 'large' })}</div>
     <h3>Aucune plante encore !</h3>
     <p>Appuie sur <strong>+</strong> pour ajouter<br>ta première plante.</p>
   </div>`;
@@ -377,7 +416,7 @@ function emptyState() {
 
 function softEmptyState(message) {
   return `<div class="empty-state empty-state--soft">
-    <div class="empty-emoji">🍃</div>
+    <div class="empty-emoji">${icon('plant', { size: 'large' })}</div>
     <h3>${esc(message)}</h3>
     <p>Essaie une autre pièce ou efface la recherche.</p>
   </div>`;
@@ -444,7 +483,7 @@ function sheetHandlers() {
 // Écran Calendrier
 // ============================================================
 function renderCalendarScreen(container) {
-  container.innerHTML = `<div class="screen-title">🌿 Timeline</div><div id="cal-container"></div>`;
+  container.innerHTML = `<div class="screen-title">${icon('calendar', { size: 'badge' })} Timeline</div><div id="cal-container"></div>`;
   renderCalendar(state.plants, effectiveWinterMode(), container.querySelector('#cal-container'), state.vacationMode, {
     onTaskDone: (id, taskType) => markTaskDone(id, taskType),
     onWater: id => markTaskDone(id, 'water'),
@@ -531,13 +570,17 @@ function renderSettings(container) {
 
       <div class="settings-section settings-card">
         <div class="settings-title">${icon('backup', { size: 'normal' })} Sauvegardes</div>
+        <div class="settings-subtitle">Sauvegarde complète</div>
+        <div class="settings-note">JSON recommandé pour sauvegarde complète des données texte, routines et carnet santé. Les photos ne sont pas incluses.</div>
+        <button class="btn-settings-action" id="btn-export-json">Exporter sauvegarde JSON V2</button>
+        <button class="btn-settings-action" id="btn-import-json">Importer sauvegarde JSON</button>
+        <div class="settings-subtitle">Tableur</div>
+        <div class="settings-note">Excel recommandé pour édition simple. Les routines V2 détaillées et les photos ne sont pas incluses.</div>
         <button class="btn-settings-action" id="btn-export">Exporter en Excel</button>
         <button class="btn-settings-action" id="btn-import">Importer depuis Excel</button>
         <button class="btn-settings-action" id="btn-template">Télécharger le modèle Excel</button>
-        <button class="btn-settings-action" id="btn-export-json">Exporter sauvegarde JSON V2</button>
-        <button class="btn-settings-action" id="btn-import-json">Importer sauvegarde JSON</button>
         <button class="btn-settings-action" id="btn-export-ics">Exporter calendrier des soins (.ics)</button>
-        <div class="settings-note">Excel et JSON n’incluent pas les photos. JSON conserve les routines complètes, sans photos.</div>
+        <div class="settings-note">Les photos ne sont incluses ni dans Excel, ni dans JSON, ni dans ICS.</div>
         <input type="file" id="import-file" accept=".xlsx" style="display:none">
         <input type="file" id="import-json-file" accept=".json,application/json" style="display:none">
       </div>
@@ -613,11 +656,11 @@ function renderSettings(container) {
     if (ok) await reloadLatestVersion();
   });
   container.querySelector('#btn-reset').addEventListener('click', async () => {
-    const ok = await confirmModal('Supprimer <strong>toutes les plantes</strong> ?<br>Cette action est irréversible.');
+    const ok = await confirmDeleteAllPlantsModal();
     if (!ok) return;
     for (const p of state.plants) await db.delete(p.id);
     state.plants = [];
-    toastMsg('Toutes les plantes supprimées');
+    toastMsg('Toutes les plantes et leurs photos locales ont été supprimées.');
     renderAll();
   });
 }
@@ -654,6 +697,7 @@ function exportJSONBackup() {
 }
 
 function exportICS() {
+  if (state.vacationMode) { toastMsg('Mode vacances actif : les soins suspendus ne sont pas exportés.', 'error'); return; }
   const events = getAllCareEvents(state.plants, { winterMode: effectiveWinterMode(), vacationMode: false }, { horizonDays: 30, includeSetup: false })
     .filter(event => event.dueDate && ['late', 'today', 'soon', 'ok'].includes(event.status));
   if (!events.length) { toastMsg('Aucun soin daté à exporter.', 'error'); return; }
@@ -661,9 +705,11 @@ function exportICS() {
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//BibiLeaf//Care Calendar V2//FR', 'CALSCALE:GREGORIAN'];
   events.forEach(event => {
     const def = CARE_TASK_DEFS[event.taskType] || { label: event.taskLabel };
-    const date = String(event.dueDate).replace(/-/g, '');
-    const description = [`Pièce : ${event.room || '—'}`, `Soin : ${def.label}`, event.quantity ? `Quantité : ${event.quantity}` : ''].filter(Boolean).join('\\n');
-    lines.push('BEGIN:VEVENT', `UID:bibileaf-${event.plantId}-${event.taskType}-${event.dueDate}@local`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${date}`, `SUMMARY:${icsEscape(`BibiLeaf - ${def.label} ${event.plantName}`)}`, `DESCRIPTION:${icsEscape(description)}`, 'END:VEVENT');
+    const exportDate = event.status === 'late' ? todayISO() : event.dueDate;
+    const date = String(exportDate).replace(/-/g, '');
+    const overdueText = event.status === 'late' ? `Ce soin était en retard de ${Math.abs(event.diffDays || 0)} jour(s).` : '';
+    const description = [`Plante : ${event.plantName}`, `Pièce : ${event.room || '—'}`, `Soin : ${def.label}`, event.quantity ? `Quantité : ${event.quantity}` : '', overdueText].filter(Boolean).join('\n');
+    lines.push('BEGIN:VEVENT', `UID:bibileaf-${event.plantId}-${event.taskType}-${exportDate}@local`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${date}`, `SUMMARY:${icsEscape(`BibiLeaf - ${def.label} ${event.plantName}`)}`, `DESCRIPTION:${icsEscape(description)}`, 'END:VEVENT');
   });
   lines.push('END:VCALENDAR');
   downloadText(`bibileaf-soins-${todayISO()}.ics`, lines.join('\r\n'), 'text/calendar');
@@ -686,43 +732,129 @@ function downloadText(filename, content, type) {
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
+function isValidMonthDay(value) {
+  const match = String(value || '').match(/^(\d{2})-(\d{2})$/);
+  if (!match) return false;
+  const month = Number(match[1]);
+  const day = Number(match[2]);
+  return month >= 1 && month <= 12 && day >= 1 && day <= 31;
+}
+
+function normalizeImportedSettings(rawSettings = {}) {
+  const normalized = { ...DEFAULT_SETTINGS };
+  if (typeof rawSettings.winterMode === 'boolean') normalized.winterMode = rawSettings.winterMode;
+  if (typeof rawSettings.winterAutoEnabled === 'boolean') normalized.winterAutoEnabled = rawSettings.winterAutoEnabled;
+  if (isValidMonthDay(rawSettings.winterAutoStart)) normalized.winterAutoStart = rawSettings.winterAutoStart;
+  if (isValidMonthDay(rawSettings.winterAutoEnd)) normalized.winterAutoEnd = rawSettings.winterAutoEnd;
+  if (typeof rawSettings.vacationMode === 'boolean') normalized.vacationMode = rawSettings.vacationMode;
+  if (rawSettings.vacationStartedAt === null || parseDate(rawSettings.vacationStartedAt)) normalized.vacationStartedAt = rawSettings.vacationStartedAt || null;
+  if (typeof rawSettings.roomFilter === 'string' && rawSettings.roomFilter.trim()) normalized.roomFilter = rawSettings.roomFilter;
+  if (Array.isArray(rawSettings.ignoredSuggestions)) normalized.ignoredSuggestions = rawSettings.ignoredSuggestions.filter(item => typeof item === 'string').slice(0, 100);
+  return normalized;
+}
+
+function validateJSONBackup(parsed) {
+  if (parsed?.type !== 'bibileaf-backup' || !Array.isArray(parsed.plants)) throw new Error('invalid');
+  const backupVersion = Number(parsed.backupVersion || 1);
+  if (![1, 2].includes(backupVersion)) throw new Error('unsupported');
+  return {
+    backupVersion,
+    appVersion: parsed.appVersion || parsed.sourceAppVersion || 'non indiquée',
+    plants: parsed.plants,
+    settings: normalizeImportedSettings(parsed.settings || {}),
+    settingsCompatible: true,
+    hasV2Routines: parsed.plants.some(plant => Array.isArray(plant.careTasks) && plant.careTasks.length),
+    hasHealthLog: parsed.plants.some(plant => Array.isArray(plant.healthHistory) && plant.healthHistory.length),
+    containsPhotos: false,
+  };
+}
+
+function confirmJSONImportPreview(preview) {
+  return new Promise(resolve => {
+    const overlay = createModal(`
+      <div class="modal-confirm import-preview">
+        <h3>Sauvegarde détectée</h3>
+        <ul>
+          <li><strong>Version sauvegarde :</strong> ${esc(preview.backupVersion)}</li>
+          <li><strong>Version app source :</strong> ${esc(preview.appVersion)}</li>
+          <li><strong>Nombre de plantes :</strong> ${esc(preview.plants.length)}</li>
+          <li><strong>Routines V2 :</strong> ${preview.hasV2Routines ? 'oui' : 'non'}</li>
+          <li><strong>Carnet santé :</strong> ${preview.hasHealthLog ? 'oui' : 'non'}</li>
+          <li><strong>Photos incluses :</strong> non</li>
+          <li><strong>Réglages compatibles :</strong> ${preview.settingsCompatible ? 'oui' : 'non'}</li>
+        </ul>
+        <p><strong>Importer cette sauvegarde ?</strong><br>Les plantes et réglages actuels seront remplacés.<br>Les photos ne seront pas restaurées depuis le fichier JSON.</p>
+        <div class="modal-btns"><button class="btn btn-secondary" id="json-cancel">Annuler</button><button class="btn btn-danger" id="json-import">Importer</button></div>
+      </div>
+    `, { preventClose: true });
+    overlay.querySelector('#json-cancel').addEventListener('click', () => { closeModal(overlay); resolve(false); });
+    overlay.querySelector('#json-import').addEventListener('click', () => { closeModal(overlay); resolve(true); });
+  });
+}
+
+function confirmDeleteAllPlantsModal() {
+  return new Promise(resolve => {
+    const overlay = createModal(`
+      <div class="modal-confirm delete-all-confirm">
+        <h3>Supprimer toutes les plantes ?</h3>
+        <p>Cette action supprimera les plantes et leurs photos locales.<br>Cette action est irréversible.</p>
+        <label>Tape <strong>SUPPRIMER</strong> pour confirmer.<input type="text" id="delete-all-input" autocomplete="off" autocapitalize="characters"></label>
+        <p class="settings-note" id="delete-all-error" hidden>Confirmation incorrecte.</p>
+        <div class="modal-btns"><button class="btn btn-secondary" id="delete-all-cancel">Annuler</button><button class="btn btn-danger" id="delete-all-ok">Supprimer définitivement</button></div>
+      </div>
+    `, { preventClose: true });
+    const input = overlay.querySelector('#delete-all-input');
+    const error = overlay.querySelector('#delete-all-error');
+    overlay.querySelector('#delete-all-cancel').addEventListener('click', () => { closeModal(overlay); resolve(false); });
+    overlay.querySelector('#delete-all-ok').addEventListener('click', () => {
+      if (input.value !== 'SUPPRIMER') {
+        error.hidden = false;
+        input.focus();
+        return;
+      }
+      closeModal(overlay);
+      resolve(true);
+    });
+    input.focus();
+  });
+}
+
 async function importJSONBackup(file) {
   try {
     const text = await file.text();
     const parsed = JSON.parse(text);
-    if (parsed?.type !== 'bibileaf-backup' || !Array.isArray(parsed.plants)) throw new Error('invalid');
-    const ok = await confirmModal('Importer cette sauvegarde ?<br>Les plantes et réglages actuels seront remplacés. Les photos ne seront pas restaurées.', 'Importer');
+    const preview = validateJSONBackup(parsed);
+    const ok = await confirmJSONImportPreview(preview);
     if (!ok) return;
 
     const previousPhotos = new Map(state.plants.filter(p => p.photo).map(p => [p.id, p.photo]));
     for (const plant of state.plants) await db.delete(plant.id);
-    for (const importedPlant of parsed.plants) {
+    for (const importedPlant of preview.plants) {
       const safe = createPlant({ ...importedPlant, photo: previousPhotos.get(importedPlant.id) || null });
       await db.put(safe);
     }
 
-    const backupSettings = parsed.settings || {};
-    const supportedSettings = ['winterMode', 'winterAutoEnabled', 'winterAutoStart', 'winterAutoEnd', 'vacationMode', 'vacationStartedAt', 'roomFilter'];
-    for (const key of supportedSettings) {
-      if (Object.prototype.hasOwnProperty.call(backupSettings, key)) await settings.set(key, backupSettings[key]);
+    const importedSettings = preview.settings;
+    for (const key of Object.keys(DEFAULT_SETTINGS)) {
+      await settings.set(key, importedSettings[key]);
     }
 
-    state.winterMode = !!backupSettings.winterMode;
-    state.winterAutoEnabled = backupSettings.winterAutoEnabled ?? state.winterAutoEnabled;
-    state.winterAutoStart = backupSettings.winterAutoStart || '11-01';
-    state.winterAutoEnd = backupSettings.winterAutoEnd || '03-31';
-    state.vacationMode = !!backupSettings.vacationMode;
-    state.vacationStartedAt = backupSettings.vacationStartedAt || null;
-    state.roomFilter = backupSettings.roomFilter || 'all';
+    state.winterMode = importedSettings.winterMode;
+    state.winterAutoEnabled = importedSettings.winterAutoEnabled;
+    state.winterAutoStart = importedSettings.winterAutoStart;
+    state.winterAutoEnd = importedSettings.winterAutoEnd;
+    state.vacationMode = importedSettings.vacationMode;
+    state.vacationStartedAt = importedSettings.vacationStartedAt;
+    state.roomFilter = importedSettings.roomFilter;
+    state.ignoredSuggestions = importedSettings.ignoredSuggestions;
     state.plants = await db.getAll();
     toastMsg('Sauvegarde JSON importée. Photos non incluses.');
     renderAll();
   } catch (error) {
     console.warn('Import JSON impossible', error);
-    toastMsg('Fichier de sauvegarde invalide.', 'error');
+    toastMsg('Fichier de sauvegarde invalide ou non compatible.', 'error');
   }
 }
-
 // ============================================================
 // Actions métier
 // ============================================================
@@ -974,7 +1106,7 @@ function scheduleNotifications() {
     settings.get('lastLateNotificationDate').then(lastDate => {
       const currentDate = todayISO();
       if (lastDate === currentDate) return;
-      new Notification('BibiLeaf 🪴', {
+      new Notification('BibiLeaf', {
         body: `${late.length} soin(s) en retard sur BibiLeaf.`,
         icon: './icons/icon-192.png',
       });
@@ -989,7 +1121,7 @@ function testNotification() {
     return;
   }
 
-  new Notification('BibiLeaf 🪴', {
+  new Notification('BibiLeaf', {
     body: 'Les notifications de soins fonctionnent !',
     icon: './icons/icon-192.png',
   });

@@ -1253,3 +1253,29 @@ body {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
 }
+
+.settings-subtitle {
+  margin: 12px 0 6px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.suggestion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.import-preview ul {
+  margin: 10px 0 14px;
+  padding-left: 18px;
+  color: var(--text-soft);
+}
+
+.delete-all-confirm label {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  text-align: left;
+}

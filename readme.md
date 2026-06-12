@@ -1,10 +1,10 @@
-# BibiLeaf V2.0.0
+# BibiLeaf V2.0.1
 
 BibiLeaf est une application locale de routines de soins pour plantes : simple, douce, mobile-first et utilisable hors ligne.
 
-La V2.0.0 transforme BibiLeaf en petit carnet de soins végétal modulaire avec une identité visuelle maison, sans compte, sans cloud, sans publicité et sans backend.
+La V2.0.1 est une version de consolidation et de finition premium de la V2 : elle conserve le modèle local/offline-first, sans compte, sans cloud, sans publicité et sans backend.
 
-## Nouveautés V2
+## Nouveautés V2 / consolidation V2.0.1
 
 - **Moteur de soins modulaires** : chaque plante possède des `careTasks` activables.
 - **Soins disponibles** : arrosage, engrais, rotation du pot, nettoyage des feuilles, rempotage, brumisation, inspection santé et taille légère.
@@ -19,6 +19,16 @@ La V2.0.0 transforme BibiLeaf en petit carnet de soins végétal modulaire avec 
 - **Sauvegarde JSON V2** : conserve les routines complètes et le carnet santé, sans photos.
 - **Excel compatible** : import/export simple conservé, avec colonnes V2 légères.
 - **Responsive renforcé** : téléphone, tablette portrait et tablette paysage.
+
+## Consolidation V2.0.1
+
+- **Moteur careTasks clarifié** : le libellé métier du soin (`taskLabel`) est séparé du texte de statut (`statusLabel`) pour éviter tout écrasement de modèle.
+- **ICS plus utile** : les soins en retard sont exportés à la date du jour avec une description indiquant le retard, tandis que les soins futurs gardent leur date d’échéance.
+- **Import JSON sécurisé** : une prévisualisation annonce version, nombre de plantes, routines, carnet santé, réglages compatibles et absence de photos avant remplacement.
+- **Réglages importés normalisés** : les sauvegardes JSON incomplètes repartent de valeurs par défaut claires au lieu de mélanger silencieusement ancien et nouveau contexte.
+- **Suppression totale renforcée** : l’utilisateur doit taper `SUPPRIMER` avant de supprimer toutes les plantes et leurs photos locales.
+- **Icônes maison finalisées** : les zones fonctionnelles principales utilisent les SVG/CSS BibiLeaf plutôt que des emojis.
+- **Photos locales préservées** : l’import JSON conserve les photos déjà présentes lorsque les identifiants de plantes correspondent.
 
 ## Modèle de données V2
 
@@ -74,9 +84,9 @@ BibiLeaf reste une PWA locale :
 
 ## Sauvegardes
 
-- **JSON V2** : recommandé pour conserver les routines complètes et le carnet santé, sans photos.
-- **Excel** : prévu pour une édition simple et compatible avec les anciens fichiers.
-- **ICS** : export manuel des soins à venir, sans synchronisation automatique.
+- **JSON V2** : recommandé pour une sauvegarde complète des données texte, routines et carnet santé, sans photos.
+- **Excel** : recommandé pour une édition simple, compatible avec les anciens fichiers, sans photos.
+- **ICS** : export manuel des soins à venir ; les retards sont datés du jour de l’export, sans photos.
 
 ## Limites assumées
 

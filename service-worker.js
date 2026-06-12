@@ -1,5 +1,5 @@
 // BibiLeaf Service Worker
-const CACHE_NAME = 'bibileaf-v2.0.0';
+const CACHE_NAME = 'bibileaf-v2.0.1';
 const ASSETS = [
   './',
   './index.html',

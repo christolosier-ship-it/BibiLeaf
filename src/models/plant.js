@@ -2,7 +2,7 @@
 
 import { parseDate, today, todayISO, diffDays } from '../utils/date.js';
 
-export const APP_VERSION = '2.0.0';
+export const APP_VERSION = '2.0.1';
 export const SCHEMA_VERSION = 2;
 
 export const CARE_TASK_DEFS = {
@@ -100,6 +100,8 @@ export function createCareTask(type, data = {}) {
 export function careTasksFromProfile(profileKey, existingPlant = {}) {
   const profile = normalizePlantProfile(profileKey);
   const preset = PROFILE_TASKS[profile] || PROFILE_TASKS.classic;
+  const existingTasks = Array.isArray(existingPlant.careTasks) ? existingPlant.careTasks : [];
+  const knownLastDone = new Map(existingTasks.map(task => [task.type || task.id, sanitizePastDate(task.lastDoneAt)]));
   const legacyLast = {
     water: sanitizePastDate(existingPlant.derniereEau),
     fertilizer: sanitizePastDate(existingPlant.dernierEngrais),
@@ -108,7 +110,7 @@ export function careTasksFromProfile(profileKey, existingPlant = {}) {
     enabled,
     frequencyDays,
     quantity,
-    lastDoneAt: legacyLast[type] || null,
+    lastDoneAt: knownLastDone.get(type) || legacyLast[type] || null,
   }));
 }
 

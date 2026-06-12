@@ -56,7 +56,7 @@ function buildSections(events) {
 
 function renderEvent(event) {
   const def = CARE_TASK_DEFS[event.taskType] || { label: event.taskLabel, actionLabel: 'Fait' };
-  const delay = event.status === 'setup' ? 'Dernière date à renseigner' : (event.diffDays < 0 ? `retard de ${Math.abs(event.diffDays)} j` : event.labelText);
+  const delay = event.status === 'setup' ? 'Dernière date à renseigner' : event.labelText;
   return `<article class="timeline-item timeline-item--${esc(event.status)}">
     <div class="timeline-dot">${icon(event.status === 'late' ? 'late' : event.iconName, { size: 'badge' })}</div>
     <div class="timeline-card">

@@ -62,6 +62,22 @@ export function openPlantForm(plantInput, onSave) {
   const photoInput = overlay.querySelector('#form-photo-input');
   let photoData = plant.photo || null;
 
+  function ensureRemovePhotoButton() {
+    if (overlay.querySelector('#form-remove-photo')) return;
+    photoZone.insertAdjacentHTML('beforeend', '<button class="btn-remove-photo" id="form-remove-photo">✕ Supprimer la photo</button>');
+  }
+
+  function bindRemovePhotoButton() {
+    overlay.querySelector('#form-remove-photo')?.addEventListener('click', e => {
+      e.stopPropagation();
+      photoData = null;
+      overlay.querySelector('#form-photo-preview').outerHTML = `<div id="form-photo-preview" class="photo-placeholder">${icon('plant', { size: 'large' })}<br><small>Ajouter une photo</small></div>`;
+      overlay.querySelector('#form-remove-photo')?.remove();
+    });
+  }
+
+  bindRemovePhotoButton();
+
   photoZone.addEventListener('click', e => {
     if (!e.target.closest('#form-remove-photo')) photoInput.click();
   });
@@ -78,6 +94,8 @@ export function openPlantForm(plantInput, onSave) {
     try {
       photoData = await compressImageFile(file);
       overlay.querySelector('#form-photo-preview').outerHTML = `<img src="${esc(photoData)}" id="form-photo-preview" alt="photo">`;
+      ensureRemovePhotoButton();
+      bindRemovePhotoButton();
     } catch (error) {
       console.warn('Compression photo impossible', error);
       toastMsg('Photo impossible à importer. Essaie avec une autre image.', 'error');
@@ -86,12 +104,6 @@ export function openPlantForm(plantInput, onSave) {
         : `<div id="form-photo-preview" class="photo-placeholder">${icon('plant', { size: 'large' })}<br><small>Ajouter une photo</small></div>`;
     }
     photoInput.value = '';
-  });
-
-  overlay.querySelector('#form-remove-photo')?.addEventListener('click', e => {
-    e.stopPropagation();
-    photoData = null;
-    overlay.querySelector('#form-photo-preview').outerHTML = `<div id="form-photo-preview" class="photo-placeholder">${icon('plant', { size: 'large' })}<br><small>Ajouter une photo</small></div>`;
   });
 
   const profileSelect = overlay.querySelector('#f-profilPlante');

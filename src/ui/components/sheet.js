@@ -88,7 +88,7 @@ function renderTaskCard(task, winterMode) {
     <div class="sheet-card-icon">${icon(task.iconName, { size: 'badge' })}</div>
     <div class="sheet-card-info">
       <div class="sheet-card-label">${esc(def.label)}</div>
-      <div class="sheet-card-value">${esc(task.labelText || task.label)}</div>
+      <div class="sheet-card-value">${esc(task.statusLabel || task.labelText || task.taskLabel)}</div>
       <div class="sheet-card-sub">Prochain : ${formatDate(task.dueDate)}</div>
       <div class="sheet-card-sub">Tous les ${esc(task.frequencyDays)} j${winterMode && task.type === 'water' ? ' (hiver effectif)' : ''}${task.quantity ? ' · ' + esc(task.quantity) : ''}</div>
     </div>
