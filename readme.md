@@ -1,10 +1,10 @@
-# BibiLeaf V2.0.1
+# BibiLeaf V2.0.2
 
 BibiLeaf est une application locale de routines de soins pour plantes : simple, douce, mobile-first et utilisable hors ligne.
 
-La V2.0.1 est une version de consolidation et de finition premium de la V2 : elle conserve le modèle local/offline-first, sans compte, sans cloud, sans publicité et sans backend.
+La V2.0.2 est une version de correction UX ciblée sur les modales : elle conserve le modèle local/offline-first, sans compte, sans cloud, sans publicité et sans backend.
 
-## Nouveautés V2 / consolidation V2.0.1
+## Nouveautés V2 / consolidation V2.0.2
 
 - **Moteur de soins modulaires** : chaque plante possède des `careTasks` activables.
 - **Soins disponibles** : arrosage, engrais, rotation du pot, nettoyage des feuilles, rempotage, brumisation, inspection santé et taille légère.
@@ -20,7 +20,15 @@ La V2.0.1 est une version de consolidation et de finition premium de la V2 : ell
 - **Excel compatible** : import/export simple conservé, avec colonnes V2 légères.
 - **Responsive renforcé** : téléphone, tablette portrait et tablette paysage.
 
-## Consolidation V2.0.1
+## Correction UX V2.0.2
+
+- **Modales harmonisées** : base commune plus robuste pour téléphone et tablette, avec scroll interne, largeur maîtrisée et absence de débordement horizontal.
+- **Formulaire plante corrigé** : les routines de soins utilisent toute la largeur disponible, passent en cartes lisibles sur tablette et évitent les champs superposés.
+- **Correction de date clarifiée** : chips de soins en wrap, raccourcis de date alignés et actions Annuler/Enregistrer en boutons cohérents.
+- **Fiche détail plante affinée** : cartes de routines et boutons d’action harmonisés pour rester lisibles même avec plusieurs soins actifs.
+- **Design system formulaire allégé** : champs, labels, grilles et boutons de modales ont des règles scoped pour éviter les effets de cascade imprévus.
+
+## Consolidation précédente conservée
 
 - **Moteur careTasks clarifié** : le libellé métier du soin (`taskLabel`) est séparé du texte de statut (`statusLabel`) pour éviter tout écrasement de modèle.
 - **ICS plus utile** : les soins en retard sont exportés à la date du jour avec une description indiquant le retard, tandis que les soins futurs gardent leur date d’échéance.

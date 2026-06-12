@@ -1231,9 +1231,7 @@ body {
   .main-content { padding: 22px 24px 110px; }
   .plant-list, .room-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .plant-card { align-items: flex-start; }
-  .care-task-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .settings-layout--v2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-  .modal-box { max-width: 720px; border-radius: 28px 28px 0 0; }
 }
 @media (min-width: 900px) {
   .plant-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -1278,4 +1276,299 @@ body {
   gap: 8px;
   margin-top: 12px;
   text-align: left;
+}
+
+
+/* ========== MODALS V2.0.2 UX ========== */
+.modal-overlay {
+  overflow: hidden;
+  padding: 0;
+}
+
+.modal-box {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  max-height: 93dvh;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.form-header,
+.sheet-header {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.form-header h2,
+.sheet-header h2,
+.sheet-header-actions {
+  min-width: 0;
+}
+
+.form-body,
+.sheet-body,
+.modal-confirm {
+  box-sizing: border-box;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.form-body,
+.sheet-body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.form-photo-zone {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.form-body label,
+.quick-date-form label,
+.care-task-block label,
+.delete-all-confirm label {
+  min-width: 0;
+}
+
+.form-body input,
+.form-body textarea,
+.form-body select,
+.quick-date-form input,
+.quick-date-form textarea,
+.quick-date-form select,
+.care-task-block input,
+.care-task-block textarea,
+.care-task-block select,
+.delete-all-confirm input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+.form-body select,
+.form-body input,
+.form-body textarea {
+  min-height: 46px;
+}
+
+.form-body textarea {
+  line-height: 1.45;
+}
+
+.form-section-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.form-actions,
+.form-notes,
+.care-task-editor {
+  min-width: 0;
+}
+
+.care-task-editor {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.care-task-block {
+  min-width: 0;
+  overflow: hidden;
+  padding: 14px;
+}
+
+.care-task-toggle {
+  gap: 12px;
+}
+
+.care-task-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
+.care-task-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  min-width: 0;
+}
+
+.care-task-grid label:last-child {
+  grid-column: 1 / -1;
+}
+
+.quick-date-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.quick-date-plant {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 16px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.quick-date-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+  overflow: visible;
+}
+
+.quick-date-choice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 150px;
+  min-width: 140px;
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
+}
+
+.quick-date-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  overflow: visible;
+}
+
+.quick-date-shortcut {
+  min-width: 0;
+  white-space: normal;
+  text-align: center;
+}
+
+.modal-btns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
+.modal-btns .btn {
+  min-width: 0;
+  width: 100%;
+}
+
+.sheet-cards--v2,
+.sheet-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.sheet-card {
+  min-width: 0;
+}
+
+.sheet-card--task {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.sheet-card-info {
+  min-width: 0;
+}
+
+.sheet-card-value,
+.sheet-card-sub {
+  overflow-wrap: anywhere;
+}
+
+.sheet-card--task .sheet-action-btn {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 40px;
+  padding: 9px 12px;
+}
+
+@media (max-width: 520px) {
+  .quick-date-shortcuts,
+  .modal-btns {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 600px) {
+  .modal-overlay {
+    align-items: center;
+    padding: 24px;
+  }
+
+  .modal-box {
+    width: min(100%, 760px);
+    max-width: calc(100vw - 48px);
+    max-height: 92dvh;
+    border-radius: 24px;
+    padding-bottom: 0;
+  }
+
+  .form-body {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .form-section-title,
+  .care-task-editor,
+  .form-actions,
+  .form-notes,
+  .form-body label:has(textarea),
+  .quick-date-form > *,
+  .modal-btns {
+    grid-column: 1 / -1;
+  }
+
+  .quick-date-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 640px;
+    width: 100%;
+    margin-inline: auto;
+  }
+
+  .care-task-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 760px) {
+  .modal-box {
+    width: min(100%, 820px);
+  }
+
+  .care-task-editor {
+    grid-template-columns: repeat(2, minmax(280px, 1fr));
+  }
+
+  .sheet-cards--v2,
+  .sheet-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1000px) {
+  .modal-box {
+    width: min(100%, 860px);
+    max-width: calc(100vw - 64px);
+  }
 }

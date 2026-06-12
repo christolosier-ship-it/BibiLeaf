@@ -52,7 +52,7 @@ export function openPlantForm(plantInput, onSave) {
       </label>
 
       <div class="form-section-title">Notes</div>
-      <label><textarea id="f-notes" rows="3" placeholder="Exposition, particularités...">${esc(plant.notes)}</textarea></label>
+      <label class="form-notes">Notes<textarea id="f-notes" rows="3" placeholder="Exposition, particularités...">${esc(plant.notes)}</textarea></label>
 
       <div class="form-actions"><button class="btn btn-primary" id="form-save">${isEdit ? 'Enregistrer' : 'Ajouter la plante'}</button></div>
     </div>

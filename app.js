@@ -83,7 +83,7 @@ async function init() {
   const ignoredSuggestions = await settings.get('ignoredSuggestions');
   state.ignoredSuggestions = Array.isArray(ignoredSuggestions) ? ignoredSuggestions : [];
 
-  // Charger les plantes et migrer V1.3.0 -> V2.0.1 sans toucher aux photos
+  // Charger les plantes et migrer V1.3.0 -> V2.0.2 sans toucher aux photos
   await migrateExistingData();
   state.plants = await db.getAll();
 
@@ -875,7 +875,7 @@ function openCorrectDateModal(id, defaultAction = 'water') {
       <div class="quick-date-actions" role="group" aria-label="Choix action">
         ${tasks.map(task => `<button class="quick-date-choice ${task.type === action ? 'quick-date-choice--active' : ''}" data-action="${esc(task.type)}">${icon(task.iconName, { size: 'small' })}${esc(CARE_TASK_DEFS[task.type]?.label || task.type)}</button>`).join('')}
       </div>
-      <label>Date<input type="date" id="correct-date" value="${esc(currentValue)}" max="${esc(todayISO())}"></label>
+      <label class="quick-date-date">Date<input type="date" id="correct-date" value="${esc(currentValue)}" max="${esc(todayISO())}"></label>
       <div class="quick-date-shortcuts"><button class="quick-date-shortcut" data-days="0">Aujourd’hui</button><button class="quick-date-shortcut" data-days="-1">Hier</button><button class="quick-date-shortcut" data-days="-2">Avant-hier</button></div>
       <div class="modal-btns"><button class="btn btn-secondary" id="correct-cancel">Annuler</button><button class="btn btn-primary" id="correct-save">Enregistrer</button></div>
     </div>
