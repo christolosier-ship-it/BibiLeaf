@@ -1,69 +1,33 @@
-// src/ui/components/calendar.js — Timeline moderne des soins
+// src/ui/components/calendar.js — Timeline carnet de soins V2
 
-import { getPlantCareStatus } from '../../utils/calc.js';
-import { today, parseDate, addDays, diffDays, toISO } from '../../utils/date.js';
+import { getAllCareEvents } from '../../utils/calc.js';
+import { today, parseDate, diffDays } from '../../utils/date.js';
 import { esc } from '../../utils/html.js';
-
-const ACTIONS = {
-  water: { icon: '💧', label: 'Arrosage', button: 'Arrosée', amountKey: 'volumeEau' },
-  fertilizer: { icon: '🌿', label: 'Engrais', button: 'Engrais fait', amountKey: 'quantiteEngrais' },
-};
+import { icon } from '../icons.js';
+import { CARE_TASK_DEFS } from '../../models/plant.js';
 
 export function renderCalendar(plants, winterMode, container, vacationMode = false, handlers = {}) {
   if (vacationMode) {
-    container.innerHTML = `
-      <div class="timeline-vacation-card">
-        <div class="timeline-vacation-emoji">🌴</div>
-        <strong>Mode vacances actif : le planning est suspendu.</strong>
-        <span>Le décompte reprendra à ton retour, sans faux retards.</span>
-      </div>`;
+    container.innerHTML = `<div class="timeline-vacation-card">${icon('vacation', { size: 'large' })}<strong>Mode vacances actif : les soins sont suspendus jusqu’à ton retour.</strong><span>Le décompte reprendra sans faux retards.</span></div>`;
     return;
   }
 
-  const events = buildTimelineEvents(plants, winterMode, vacationMode);
-  const lateEvents = events.filter(event => event.diff < 0);
-  const upcomingEvents = events.filter(event => event.diff >= 0 && event.diff <= 30);
-  const sections = [];
-
-  if (lateEvents.length > 0) {
-    sections.push({ key: 'late', title: '🚨 En retard', events: lateEvents });
-  }
-
-  const byDate = new Map();
-  upcomingEvents.forEach(event => {
-    if (!byDate.has(event.dueDate)) byDate.set(event.dueDate, []);
-    byDate.get(event.dueDate).push(event);
-  });
-
-  [...byDate.keys()].sort().forEach(date => {
-    sections.push({ key: date, title: formatTimelineTitle(date), events: byDate.get(date) });
-  });
+  const events = getAllCareEvents(plants, { winterMode, vacationMode }, { horizonDays: 30, includeSetup: true });
+  const sections = buildSections(events);
 
   if (sections.length === 0) {
-    container.innerHTML = `<div class="empty-state"><div class="empty-emoji">🌱</div><h3>Planning tout doux</h3><p>Aucune action prévue dans les 30 prochains jours.</p></div>`;
+    container.innerHTML = `<div class="empty-state">${icon('ok', { size: 'splash' })}<h3>Planning tout doux</h3><p>Aucun soin prévu dans les 30 prochains jours.</p></div>`;
     return;
   }
 
   container.innerHTML = `
-    <div class="timeline-intro">Les retards restent en haut, puis les prochaines échéances eau + engrais sur 30 jours.</div>
-    <div class="timeline">
-      ${sections.map(section => `
-        <section class="timeline-section ${section.key === 'late' ? 'timeline-section--late' : ''}">
-          <div class="timeline-section-title">${esc(section.title)}</div>
-          <div class="timeline-items">
-            ${section.events.map(renderEvent).join('')}
-          </div>
-        </section>
-      `).join('')}
+    <div class="timeline-intro">Carnet de soins végétal : retards, aujourd’hui, puis les prochaines routines actives.</div>
+    <div class="timeline timeline--v2">
+      ${sections.map(section => `<section class="timeline-section timeline-section--${esc(section.key)}"><div class="timeline-section-title">${esc(section.title)}</div><div class="timeline-items">${section.events.map(renderEvent).join('')}</div></section>`).join('')}
     </div>`;
 
-  container.querySelectorAll('[data-timeline-action]').forEach(button => {
-    button.addEventListener('click', () => {
-      const action = button.dataset.timelineAction;
-      const id = button.dataset.plantId;
-      if (action === 'water') handlers.onWater?.(id);
-      if (action === 'fertilizer') handlers.onFert?.(id);
-    });
+  container.querySelectorAll('[data-timeline-task]').forEach(button => {
+    button.addEventListener('click', () => handlers.onTaskDone?.(button.dataset.plantId, button.dataset.timelineTask));
   });
 
   container.querySelectorAll('[data-edit-date]').forEach(button => {
@@ -71,58 +35,51 @@ export function renderCalendar(plants, winterMode, container, vacationMode = fal
   });
 }
 
-function buildTimelineEvents(plants, winterMode, vacationMode) {
-  const start = today();
-  const events = [];
-  plants.forEach(plant => {
-    const care = getPlantCareStatus(plant, { winterMode, vacationMode });
-    addEvent(events, plant, care.water, 'water', start);
-    addEvent(events, plant, care.fertilizer, 'fertilizer', start);
+function buildSections(events) {
+  const groups = [
+    { key: 'late', title: 'En retard', events: events.filter(e => e.status === 'late') },
+    { key: 'today', title: 'Aujourd’hui', events: events.filter(e => e.status === 'today') },
+    { key: 'setup', title: 'À configurer', events: events.filter(e => e.status === 'setup') },
+    { key: 'tomorrow', title: 'Demain', events: events.filter(e => e.diffDays === 1) },
+    { key: 'week', title: 'Cette semaine', events: events.filter(e => e.diffDays >= 2 && e.diffDays <= 6) },
+  ];
+  const futureByDate = new Map();
+  events.filter(e => e.diffDays >= 7).forEach(e => {
+    if (!futureByDate.has(e.dueDate)) futureByDate.set(e.dueDate, []);
+    futureByDate.get(e.dueDate).push(e);
   });
-  return events.sort((a, b) => {
-    if (a.diff !== b.diff) return a.diff - b.diff;
-    if (a.action !== b.action) return a.action === 'water' ? -1 : 1;
-    return String(a.plant.nom || '').localeCompare(String(b.plant.nom || ''), 'fr');
-  });
-}
-
-function addEvent(events, plant, careItem, action, start) {
-  if (!careItem?.enabled || !careItem.dueDate) return;
-  const due = parseDate(careItem.dueDate);
-  if (!due) return;
-  const diff = diffDays(due, start);
-  if (diff > 30) return;
-  events.push({ plant, action, dueDate: careItem.dueDate, diff, label: careItem.label });
+  return [
+    ...groups.filter(group => group.events.length),
+    ...[...futureByDate.keys()].sort().map(date => ({ key: 'future', title: formatTimelineTitle(date), events: futureByDate.get(date) })),
+  ];
 }
 
 function renderEvent(event) {
-  const config = ACTIONS[event.action];
-  const amount = event.plant[config.amountKey];
-  const delay = event.diff < 0 ? `retard de ${Math.abs(event.diff)} j` : event.label;
-  return `
-    <article class="timeline-item ${event.diff < 0 ? 'timeline-item--late' : ''}">
-      <div class="timeline-dot">${event.diff < 0 ? '🚨' : config.icon}</div>
-      <div class="timeline-card">
-        <div class="timeline-card-main">
-          <strong>${esc(event.plant.nom || 'Sans nom')}</strong>
-          <span>${config.icon} ${config.label}${amount ? ` · ${esc(amount)}` : ''}</span>
-          <small>${esc(delay)}${event.plant.piece ? ` · 📍 ${esc(event.plant.piece)}` : ''}</small>
-        </div>
-        <div class="timeline-card-actions">
-          <button class="btn btn-primary timeline-action" data-timeline-action="${event.action}" data-plant-id="${esc(event.plant.id)}">${config.button}</button>
-          <button class="btn btn-secondary timeline-action" data-edit-date="${event.action}" data-plant-id="${esc(event.plant.id)}">Modifier date</button>
-        </div>
+  const def = CARE_TASK_DEFS[event.taskType] || { label: event.taskLabel, actionLabel: 'Fait' };
+  const delay = event.status === 'setup' ? 'Dernière date à renseigner' : (event.diffDays < 0 ? `retard de ${Math.abs(event.diffDays)} j` : event.labelText);
+  return `<article class="timeline-item timeline-item--${esc(event.status)}">
+    <div class="timeline-dot">${icon(event.status === 'late' ? 'late' : event.iconName, { size: 'badge' })}</div>
+    <div class="timeline-card">
+      <div class="timeline-card-main">
+        <strong>${esc(event.plantName)}</strong>
+        <span>${icon(event.iconName, { size: 'small' })}${esc(def.label)}${event.quantity ? ` · ${esc(event.quantity)}` : ''}</span>
+        <small>${esc(delay)}${event.room ? ` · ${esc(event.room)}` : ''}</small>
       </div>
-    </article>`;
+      <div class="timeline-card-actions">
+        <button class="btn btn-primary timeline-action" data-timeline-task="${esc(event.taskType)}" data-plant-id="${esc(event.plantId)}">${esc(def.actionLabel || 'Fait')}</button>
+        <button class="btn btn-secondary timeline-action" data-edit-date="${esc(event.taskType)}" data-plant-id="${esc(event.plantId)}">Modifier date</button>
+      </div>
+    </div>
+  </article>`;
 }
 
 function formatTimelineTitle(dateStr) {
   const due = parseDate(dateStr);
   if (!due) return dateStr;
-  const diff = diffDays(due, today());
-  if (diff === 0) return "Aujourd’hui";
-  if (diff === 1) return 'Demain';
-  if (diff === 2) return 'Dans 2 jours';
-  if (diff > 2 && diff <= 6) return `Dans ${diff} jours`;
+  const delta = diffDays(due, today());
+  if (delta === 0) return 'Aujourd’hui';
+  if (delta === 1) return 'Demain';
+  if (delta === 2) return 'Dans 2 jours';
+  if (delta > 2 && delta <= 6) return `Dans ${delta} jours`;
   return due.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 }

@@ -1,7 +1,7 @@
 {
   "name": "BibiLeaf",
   "short_name": "BibiLeaf",
-  "description": "Suivi doux de vos plantes d'intérieur",
+  "description": "Application locale de routines de soins pour plantes",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
@@ -27,5 +27,5 @@
     "utilities"
   ],
   "lang": "fr",
-  "version": "1.3.0"
+  "version": "2.0.0"
 }

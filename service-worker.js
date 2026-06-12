@@ -1,5 +1,5 @@
 // BibiLeaf Service Worker
-const CACHE_NAME = 'bibileaf-v1.3.0';
+const CACHE_NAME = 'bibileaf-v2.0.0';
 const ASSETS = [
   './',
   './index.html',
@@ -13,6 +13,7 @@ const ASSETS = [
   './src/utils/date.js',
   './src/utils/calc.js',
   './src/utils/html.js',
+  './src/ui/icons.js',
   './src/ui/components/card.js',
   './src/ui/components/form.js',
   './src/ui/components/modal.js',

@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#5a9a6f">
   <meta name="description" content="Suivi doux de vos plantes d'intérieur">
 
-  <title>BibiLeaf 🪴</title>
+  <title>BibiLeaf V2.0.0</title>
 
   <!-- PWA manifest -->
   <link rel="manifest" href="manifest.json">
@@ -18,7 +18,10 @@
   <link rel="apple-touch-icon" href="icons/icon-512.png">
   <link rel="icon" href="icons/icon-192.png" type="image/png">
 
-  <!-- Styles -->
+  <!-- Font + Styles -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 
   <!-- XLSX library (CDN, mis en cache par SW) -->
@@ -90,16 +93,24 @@
 
     <!-- Navigation bas de page -->
     <nav class="bottom-nav">
-      <button class="nav-btn nav-btn--active" data-screen="home">
-        <span class="nav-icon">🪴</span>
+      <button class="nav-btn nav-btn--active" data-screen="today">
+        <span class="nav-icon" data-nav-icon="today"></span>
+        <span>Aujourd’hui</span>
+      </button>
+      <button class="nav-btn" data-screen="home">
+        <span class="nav-icon" data-nav-icon="plant"></span>
         <span>Plantes</span>
       </button>
       <button class="nav-btn" data-screen="calendar">
-        <span class="nav-icon">📅</span>
+        <span class="nav-icon" data-nav-icon="calendar"></span>
         <span>Timeline</span>
       </button>
+      <button class="nav-btn" data-screen="rooms">
+        <span class="nav-icon" data-nav-icon="room"></span>
+        <span>Pièces</span>
+      </button>
       <button class="nav-btn" data-screen="settings">
-        <span class="nav-icon">⚙️</span>
+        <span class="nav-icon" data-nav-icon="settings"></span>
         <span>Réglages</span>
       </button>
     </nav>
